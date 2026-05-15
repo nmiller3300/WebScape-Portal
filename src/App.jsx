@@ -252,12 +252,83 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
   if(fPriority) filtered=filtered.filter(l=>l.priority);
   filtered=[...filtered].sort((a,b)=>(b.priority?1:0)-(a.priority?1:0));
   const upd=(id,u)=>setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l));
+  const [showManual,setShowManual]=useState(false);
+  const [manual,setManual]=useState({businessName:"",category:"",phone:"",address:"",zip:"",rating:"",reviews:"",source:"Manual Entry"});
+  const submitManual=()=>{
+    if(!manual.businessName.trim()){return;}
+    const newLead={
+      id:`${Date.now()}-${Math.random().toString(36).slice(2,9)}`,
+      businessName:manual.businessName,category:manual.category||"Other",
+      phone:manual.phone||"Not listed",address:manual.address,zip:manual.zip,
+      rating:parseFloat(manual.rating)||0,reviews:parseInt(manual.reviews)||0,
+      status:"new",priority:false,source:manual.source||"Manual Entry",
+      assignedTo:null,coWorkers:[],claimedBy:null,claimedAt:null,demoLink:"",
+      notes:[],outreachLog:[],
+      payment:{amount:"",monthly:"",billingName:"",billingEmail:"",paymentLink:"",status:"unpaid"},
+    };
+    setLeads(p=>[...p,newLead]);
+    setManual({businessName:"",category:"",phone:"",address:"",zip:"",rating:"",reviews:"",source:"Manual Entry"});
+    setShowManual(false);
+  };
+
   return (
     <div className="fu" style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:4}}>
         <div><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>{filterMine?"My Leads":"All Leads"}</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:2}}>{filtered.length} lead{filtered.length!==1?"s":""}</div></div>
-        {!filterMine&&<button onClick={()=>setShowSearch(!showSearch)} style={{padding:"9px 16px",borderRadius:10,border:`1px solid ${showSearch?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.35)"}`,background:showSearch?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.1)",color:"#a5b4fc",fontSize:13,fontWeight:600}}>🔍 Find Leads</button>}
+        {!filterMine&&<div style={{display:"flex",gap:8}}>
+          <button onClick={()=>{setShowManual(!showManual);setShowSearch(false);}} style={{padding:"9px 16px",borderRadius:10,border:`1px solid ${showManual?"rgba(16,185,129,0.5)":"rgba(16,185,129,0.3)"}`,background:showManual?"rgba(16,185,129,0.2)":"rgba(16,185,129,0.08)",color:"#34d399",fontSize:13,fontWeight:600}}>+ Add Lead</button>
+          <button onClick={()=>{setShowSearch(!showSearch);setShowManual(false);}} style={{padding:"9px 16px",borderRadius:10,border:`1px solid ${showSearch?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.35)"}`,background:showSearch?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.1)",color:"#a5b4fc",fontSize:13,fontWeight:600}}>🔍 Find Leads</button>
+        </div>}
       </div>
+
+      {/* MANUAL ADD LEAD */}
+      {showManual&&!filterMine&&(
+        <Box label="Add Lead Manually" accent="#10b981">
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div style={{gridColumn:"1/-1"}}>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Business Name *</div>
+              <input value={manual.businessName} onChange={e=>setManual({...manual,businessName:e.target.value})} placeholder="Business name…"/>
+            </div>
+            <div>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Category</div>
+              <select value={manual.category} onChange={e=>setManual({...manual,category:e.target.value})}>
+                <option value="">Select…</option>
+                {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Phone</div>
+              <input value={manual.phone} onChange={e=>setManual({...manual,phone:e.target.value})} placeholder="(678) 555-0101"/>
+            </div>
+            <div style={{gridColumn:"1/-1"}}>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Address</div>
+              <input value={manual.address} onChange={e=>setManual({...manual,address:e.target.value})} placeholder="123 Main St, City GA"/>
+            </div>
+            <div>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>ZIP Code</div>
+              <input value={manual.zip} onChange={e=>setManual({...manual,zip:e.target.value})} placeholder="30542"/>
+            </div>
+            <div>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Source</div>
+              <select value={manual.source} onChange={e=>setManual({...manual,source:e.target.value})}>
+                {SOURCES.map(s=><option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Google Rating</div>
+              <input value={manual.rating} onChange={e=>setManual({...manual,rating:e.target.value})} placeholder="4.5" type="number" step="0.1" max="5"/>
+            </div>
+            <div>
+              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Review Count</div>
+              <input value={manual.reviews} onChange={e=>setManual({...manual,reviews:e.target.value})} placeholder="87" type="number"/>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={submitManual} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",fontSize:13,fontWeight:700}}>Add to Leads</button>
+            <button onClick={()=>setShowManual(false)} style={{padding:"10px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"rgba(255,255,255,0.4)",fontSize:13}}>Cancel</button>
+          </div>
+        </Box>
+      )}
 
       {/* ZIP SEARCH */}
       {showSearch&&!filterMine&&(
@@ -565,6 +636,9 @@ const Settings = ({user}) => {
   const [pw,setPw]=useState({current:"",newPw:"",confirm:""});
   const [pwMsg,setPwMsg]=useState({text:"",ok:false});
   const [zipHistory,setZipHistory]=useState(()=>JSON.parse(localStorage.getItem("ws_zips")||'[]'));
+  const [testPhone,setTestPhone]=useState("");
+  const [testCalling,setTestCalling]=useState(false);
+  const [testMsg,setTestMsg]=useState("");
   const changePw=()=>{
     const stored=getPW();
     if(stored[user.id]!==pw.current){setPwMsg({text:"Current password is incorrect.",ok:false});return;}
@@ -572,6 +646,17 @@ const Settings = ({user}) => {
     if(pw.newPw!==pw.confirm){setPwMsg({text:"New passwords don't match.",ok:false});return;}
     stored[user.id]=pw.newPw; savePW(stored);
     setPwMsg({text:"Password updated.",ok:true}); setPw({current:"",newPw:"",confirm:""});
+  };
+  const fireTestCall=async()=>{
+    if(!testPhone.trim()){setTestMsg("Enter a phone number.");return;}
+    setTestCalling(true); setTestMsg("");
+    try{
+      const res=await fetch("/.netlify/functions/make-call",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:testPhone,businessName:"Test Business",category:"Test",address:"Flowery Branch GA",phone:testPhone})});
+      const data=await res.json();
+      if(data.error)setTestMsg(`Error: ${data.error}`);
+      else setTestMsg(`✓ Test call fired. Call ID: ${data.callId}`);
+    }catch(e){setTestMsg("Failed. Check Bland AI key in Netlify.");}
+    setTestCalling(false);
   };
   const clearZips=()=>{localStorage.removeItem("ws_zips");setZipHistory([]);};
   const integrations=[
@@ -594,7 +679,14 @@ const Settings = ({user}) => {
           ))}
         </div>
       </Box>
-      <Box label={`Change Password — ${user.name}`} accent="#f59e0b">
+      <Box label="Test AI Call" accent="#f97316">
+        <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Fire a test call to any number to hear how Alex sounds before pointing it at real leads.</div>
+        <div style={{display:"flex",gap:8,marginBottom:10}}>
+          <input placeholder="Phone number e.g. (470) 656-2258" value={testPhone} onChange={e=>setTestPhone(e.target.value)} onKeyDown={e=>e.key==="Enter"&&fireTestCall()}/>
+          <button onClick={fireTestCall} disabled={testCalling} style={{padding:"9px 20px",borderRadius:10,border:"none",background:testCalling?"rgba(249,115,22,0.3)":"linear-gradient(135deg,#f97316,#ea580c)",color:"#fff",fontSize:13,fontWeight:700,whiteSpace:"nowrap"}}>{testCalling?"Calling…":"📞 Test Call"}</button>
+        </div>
+        {testMsg&&<div style={{fontSize:12,color:testMsg.startsWith("Error")||testMsg.startsWith("Failed")?"#f43f5e":"#34d399"}}>{testMsg}</div>}
+      </Box>
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:10}}>
           <input type="password" placeholder="Current password" value={pw.current} onChange={e=>setPw({...pw,current:e.target.value})}/>
           <input type="password" placeholder="New password" value={pw.newPw} onChange={e=>setPw({...pw,newPw:e.target.value})}/>
