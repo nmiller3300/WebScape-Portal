@@ -237,7 +237,7 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
         setProgress({done:Math.min(i+batchSize,selectedCats.length),total:selectedCats.length});
       }
       setSearchResults(allLeads);
-      setSearchMsg(`Searched ${selectedCats.length} categories in ${searchZip} — ${allLeads.length} new leads with no website found.`);
+      setSearchMsg(`Searched ${selectedCats.length} categories in ${searchZip} — ${totalFound} total businesses found — ${allLeads.length} with no website to add.`);
     }catch(e){setSearchMsg("Search failed. Check your API key in Netlify.");}
     setSearching(false); setProgress({done:0,total:0});
   };

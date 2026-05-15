@@ -36,19 +36,24 @@ exports.handler = async (event) => {
       return { statusCode: 500, body: JSON.stringify({ error: data.error }) };
     }
 
-    const places = data.local_results || [];
+    // SerpApi can return results under different keys
+    const places = data.local_results || data.places_results || data.local_ads || [];
 
-    // Filter for businesses with no website — these are our targets
+    // Filter for businesses with no website
+    // Check all possible website field names SerpApi might use
     const leads = places
-      .filter((p) => !p.website)
-      .map((p, i) => ({
-        id: Date.now() + i,
-        businessName: p.title || "Unknown Business",
+      .filter((p) => {
+        const hasWebsite = p.website || p.website_link || p.website_url;
+        return !hasWebsite;
+      })
+      .map((p) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        businessName: p.title || p.name || "Unknown Business",
         category: category,
-        address: p.address || "",
-        phone: p.phone || "Not listed",
+        address: p.address || p.vicinity || "",
+        phone: p.phone || p.formatted_phone_number || "Not listed",
         rating: p.rating || 0,
-        reviews: p.reviews || 0,
+        reviews: p.reviews || p.user_ratings_total || 0,
         zip: zip,
         status: "new",
         priority: false,
@@ -74,10 +79,22 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ leads, total: places.length, noWebsite: leads.length, zip }),
+      body: JSON.stringify({
+        leads,
+        total: places.length,
+        noWebsite: leads.length,
+        zip,
+        // Debug info so we can see what came back
+        _debug: {
+          resultKey: data.local_results ? "local_results" : data.places_results ? "places_results" : "none",
+          rawCount: places.length,
+          searchInfo: data.search_information,
+        },
+      }),
     };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
+
 
