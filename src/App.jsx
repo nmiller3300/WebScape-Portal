@@ -346,7 +346,9 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
                 {mainStages.slice(0,5).map(s=>(
                   <button key={s.id} onClick={()=>{upd(lead.id,{status:s.id});setQMenu(null);}} style={{display:"block",width:"100%",padding:"7px 10px",background:lead.status===s.id?"rgba(99,102,241,0.15)":"transparent",border:"none",color:lead.status===s.id?"#a5b4fc":"rgba(255,255,255,0.55)",fontSize:12,textAlign:"left",borderRadius:8}}>→ {s.label}</button>
                 ))}
-                <button onClick={()=>setQMenu(null)} style={{display:"block",width:"100%",padding:"6px 10px",background:"transparent",border:"none",color:"rgba(255,255,255,0.25)",fontSize:11,textAlign:"left",marginTop:4}}>Close</button>
+                <div style={{height:1,background:"rgba(255,255,255,0.07)",margin:"6px 0"}}/>
+                <button onClick={()=>{if(window.confirm(`Remove ${lead.businessName}?`)){setLeads(p=>p.filter(l=>l.id!==lead.id));setQMenu(null);}}} style={{display:"block",width:"100%",padding:"8px 10px",background:"transparent",border:"none",color:"#f43f5e",fontSize:12,textAlign:"left",borderRadius:8}}>🗑 Remove Lead</button>
+                <button onClick={()=>setQMenu(null)} style={{display:"block",width:"100%",padding:"6px 10px",background:"transparent",border:"none",color:"rgba(255,255,255,0.25)",fontSize:11,textAlign:"left",marginTop:2}}>Close</button>
               </div>
             )}
           </div>
@@ -385,6 +387,7 @@ const LeadDetail = ({leadId,leads,setLeads,user,onBack}) => {
           <div style={{fontSize:12,color:"rgba(255,255,255,0.38)",marginTop:3}}>{lead.category} · {lead.zip}{lead.source?` · Source: ${lead.source}`:""}</div>
         </div>
         <Score lead={lead}/>
+        <button onClick={()=>{if(window.confirm(`Remove ${lead.businessName}?`)){setLeads(p=>p.filter(l=>l.id!==leadId));onBack();}}} style={{padding:"7px 12px",borderRadius:10,border:"1px solid rgba(244,63,94,0.3)",background:"rgba(244,63,94,0.1)",color:"#f43f5e",fontSize:12,fontWeight:600,flexShrink:0}}>🗑 Remove</button>
       </div>
 
       {/* Pipeline */}
@@ -478,11 +481,26 @@ const LeadDetail = ({leadId,leads,setLeads,user,onBack}) => {
 
       {/* AI Insights */}
       <Box label="AI Insights" accent="#6366f1">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:12}}>
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.3)",lineHeight:1.6,flex:1}}>Once the Anthropic API key is added in Settings, this will generate tailored outreach suggestions and conversion insights for {lead.businessName}.</div>
-          <span style={{fontSize:10,color:"rgba(99,102,241,0.6)",background:"rgba(99,102,241,0.1)",padding:"3px 8px",borderRadius:8,fontWeight:600,flexShrink:0}}>API needed</span>
-        </div>
-        <button disabled style={{padding:"8px 18px",borderRadius:10,border:"1px solid rgba(99,102,241,0.2)",background:"rgba(99,102,241,0.05)",color:"rgba(99,102,241,0.4)",fontSize:12,fontWeight:600}}>Generate Insights</button>
+        {(() => {
+          const [insight,setInsight]=useState(""); const [loading,setLoading]=useState(false); const [err,setErr]=useState("");
+          const generate=async()=>{
+            setLoading(true); setErr(""); setInsight("");
+            try{
+              const res=await fetch("/.netlify/functions/generate-insights",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({businessName:lead.businessName,category:lead.category,address:lead.address,phone:lead.phone,rating:lead.rating,reviews:lead.reviews,status:lead.status,notes:lead.notes.map(n=>n.text).join(" | ")})});
+              const data=await res.json();
+              if(data.error)setErr(data.error);
+              else setInsight(data.insight);
+            }catch(e){setErr("Failed to generate. Check Anthropic API key in Netlify.");}
+            setLoading(false);
+          };
+          return(
+            <>
+              {insight&&<div style={{fontSize:13,color:"rgba(255,255,255,0.8)",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-wrap"}}>{insight}</div>}
+              {err&&<div style={{fontSize:12,color:"#f43f5e",marginBottom:10}}>{err}</div>}
+              <button onClick={generate} disabled={loading} style={{padding:"9px 20px",borderRadius:10,border:"none",background:loading?"rgba(99,102,241,0.3)":"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontSize:13,fontWeight:600}}>{loading?"Generating…":"Generate Insights"}</button>
+            </>
+          );
+        })()}
       </Box>
     </div>
   );
@@ -518,12 +536,9 @@ const ClientRoster = ({leads,go,setSelLead}) => {
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
 const Settings = ({user}) => {
-  const [apis,setApis]=useState(()=>JSON.parse(localStorage.getItem("ws_apis")||"{}"));
-  const [saved,setSaved]=useState(false);
   const [pw,setPw]=useState({current:"",newPw:"",confirm:""});
   const [pwMsg,setPwMsg]=useState({text:"",ok:false});
-  const zipHistory=JSON.parse(localStorage.getItem("ws_zips")||'[]');
-  const saveApis=()=>{localStorage.setItem("ws_apis",JSON.stringify(apis));setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const [zipHistory,setZipHistory]=useState(()=>JSON.parse(localStorage.getItem("ws_zips")||'[]'));
   const changePw=()=>{
     const stored=getPW();
     if(stored[user.id]!==pw.current){setPwMsg({text:"Current password is incorrect.",ok:false});return;}
@@ -532,30 +547,26 @@ const Settings = ({user}) => {
     stored[user.id]=pw.newPw; savePW(stored);
     setPwMsg({text:"Password updated.",ok:true}); setPw({current:"",newPw:"",confirm:""});
   };
-  const apiFields=[
-    ["anthropic","Anthropic API","AI insights & outreach generation","ANTHROPIC_API_KEY"],
-    ["serpapi","SerpApi","Lead discovery by zip code — Google Maps data","SERPAPI_KEY"],
-    ["blandAi","Bland AI","AI phone call outreach","BLAND_API_KEY"],
-    ["cloudflare","Cloudflare Pages","Client demo site hosting","CF_API_TOKEN"],
-    ["payment","Payment Processor","Square / Cash App key or base URL","PAYMENT_KEY"],
+  const clearZips=()=>{localStorage.removeItem("ws_zips");setZipHistory([]);};
+  const integrations=[
+    {name:"Anthropic API",desc:"AI insights & outreach generation",env:"ANTHROPIC_API_KEY"},
+    {name:"SerpApi",desc:"Lead discovery by zip code",env:"SERPAPI_KEY"},
+    {name:"Bland AI",desc:"AI phone call outreach",env:"BLAND_API_KEY"},
+    {name:"Cloudflare Pages",desc:"Client demo site hosting",env:"CF_API_TOKEN"},
   ];
   return (
     <div className="fu" style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div style={{paddingTop:4}}><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>Settings</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:2}}>API keys, account, and team.</div></div>
+      <div style={{paddingTop:4}}><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>Settings</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:2}}>Account, team, and integrations.</div></div>
       <Box label="API Integrations" accent="#6366f1">
-        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
-          {apiFields.map(([key,name,desc,envKey])=>(
-            <div key={key} style={{background:"rgba(255,255,255,0.04)",borderRadius:12,padding:"12px 14px",border:"1px solid rgba(255,255,255,0.07)"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                <div><div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>{desc}</div></div>
-                <span style={{fontSize:10,color:apis[key]?"#34d399":"#f59e0b",background:apis[key]?"rgba(16,185,129,0.12)":"rgba(245,158,11,0.12)",padding:"3px 8px",borderRadius:8,fontWeight:700,flexShrink:0,marginLeft:8}}>{apis[key]?"Connected":"Not set"}</span>
-              </div>
-              <input type="password" placeholder={envKey} value={apis[key]||""} onChange={e=>setApis({...apis,[key]:e.target.value})}/>
+        <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",marginBottom:14,lineHeight:1.6}}>All API keys are configured as environment variables in Netlify. They are never stored in the frontend.</div>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {integrations.map(i=>(
+            <div key={i.env} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",background:"rgba(255,255,255,0.04)",borderRadius:10,border:"1px solid rgba(255,255,255,0.07)"}}>
+              <div><div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{i.name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:2}}>{i.desc}</div></div>
+              <code style={{fontSize:10,color:"rgba(99,102,241,0.7)",background:"rgba(99,102,241,0.1)",padding:"3px 8px",borderRadius:6,fontFamily:"monospace"}}>{i.env}</code>
             </div>
           ))}
         </div>
-        <button onClick={saveApis} style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:saved?"rgba(16,185,129,0.3)":"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontSize:13,fontWeight:600}}>{saved?"✓ Saved":"Save API Keys"}</button>
-        <div style={{fontSize:11,color:"rgba(255,255,255,0.2)",marginTop:8}}>Keys are stored locally and will be set as Netlify environment variables on deploy. Never exposed in the frontend.</div>
       </Box>
       <Box label={`Change Password — ${user.name}`} accent="#f59e0b">
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:10}}>
@@ -567,10 +578,14 @@ const Settings = ({user}) => {
         <button onClick={changePw} style={{width:"100%",padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#fff",fontSize:13,fontWeight:600}}>Update Password</button>
       </Box>
       <Box label="Zip Code History">
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
-          {zipHistory.map(z=><span key={z} style={{padding:"4px 12px",borderRadius:20,background:"rgba(99,102,241,0.15)",border:"1px solid rgba(99,102,241,0.25)",color:"#a5b4fc",fontSize:12,fontWeight:600}}>{z}</span>)}
-        </div>
-        <div style={{fontSize:11,color:"rgba(255,255,255,0.22)"}}>Zips log automatically when you run a Google Places search.</div>
+        {zipHistory.length===0?<div style={{fontSize:12,color:"rgba(255,255,255,0.25)",fontStyle:"italic"}}>No zips searched yet.</div>:(
+          <>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+              {zipHistory.map(z=><span key={z} style={{padding:"4px 12px",borderRadius:20,background:"rgba(99,102,241,0.15)",border:"1px solid rgba(99,102,241,0.25)",color:"#a5b4fc",fontSize:12,fontWeight:600}}>{z}</span>)}
+            </div>
+            <button onClick={clearZips} style={{padding:"7px 14px",borderRadius:8,border:"1px solid rgba(244,63,94,0.3)",background:"rgba(244,63,94,0.08)",color:"#f43f5e",fontSize:12,fontWeight:600}}>Clear History</button>
+          </>
+        )}
       </Box>
       <Box label="Team Accounts">
         {Object.values(ACCOUNTS).map(a=>(

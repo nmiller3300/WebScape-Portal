@@ -22,30 +22,31 @@ exports.handler = async (event) => {
   }
 
   try {
-    const params = new URLSearchParams({
-      engine: "google_maps",
-      q: `${category} in ${zip}`,
-      type: "search",
-      api_key: apiKey,
-    });
+    const params1 = new URLSearchParams({ engine:"google_maps", q:`${category} in ${zip}`, type:"search", start:"0", api_key:apiKey });
+    const params2 = new URLSearchParams({ engine:"google_maps", q:`${category} near ${zip} Georgia`, type:"search", start:"0", api_key:apiKey });
 
-    const response = await fetch(`https://serpapi.com/search.json?${params}`);
-    const data = await response.json();
+    const [res1, res2] = await Promise.all([
+      fetch(`https://serpapi.com/search.json?${params1}`).then(r=>r.json()),
+      fetch(`https://serpapi.com/search.json?${params2}`).then(r=>r.json()),
+    ]);
 
-    if (data.error) {
-      return { statusCode: 500, body: JSON.stringify({ error: data.error }) };
+    if (res1.error && res2.error) {
+      return { statusCode: 500, body: JSON.stringify({ error: res1.error }) };
     }
 
-    // SerpApi can return results under different keys
-    const places = data.local_results || data.places_results || data.local_ads || [];
+    // Merge results from both queries, deduplicate by title
+    const seen = new Set();
+    const allPlaces = [];
+    for (const data of [res1, res2]) {
+      const places = data.local_results || data.places_results || [];
+      for (const p of places) {
+        const key = (p.title||p.name||"").toLowerCase();
+        if (key && !seen.has(key)) { seen.add(key); allPlaces.push(p); }
+      }
+    }
 
-    // Filter for businesses with no website
-    // Check all possible website field names SerpApi might use
-    const leads = places
-      .filter((p) => {
-        const hasWebsite = p.website || p.website_link || p.website_url;
-        return !hasWebsite;
-      })
+    const leads = allPlaces
+      .filter((p) => { const hasWebsite = p.website || p.website_link || p.website_url; return !hasWebsite; })
       .map((p) => ({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         businessName: p.title || p.name || "Unknown Business",
@@ -66,31 +67,13 @@ exports.handler = async (event) => {
         demoLink: "",
         notes: [],
         outreachLog: [],
-        payment: {
-          amount: "",
-          monthly: "",
-          billingName: "",
-          billingEmail: "",
-          paymentLink: "",
-          status: "unpaid",
-        },
+        payment: { amount:"", monthly:"", billingName:"", billingEmail:"", paymentLink:"", status:"unpaid" },
       }));
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        leads,
-        total: places.length,
-        noWebsite: leads.length,
-        zip,
-        // Debug info so we can see what came back
-        _debug: {
-          resultKey: data.local_results ? "local_results" : data.places_results ? "places_results" : "none",
-          rawCount: places.length,
-          searchInfo: data.search_information,
-        },
-      }),
+      body: JSON.stringify({ leads, total: allPlaces.length, noWebsite: leads.length, zip }),
     };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
