@@ -3,9 +3,9 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: "Method not allowed" };
   }
 
-  const apiKey = process.env.GOOGLE_PLACES_KEY;
+  const apiKey = process.env.SERPAPI_KEY;
   if (!apiKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: "Google Places API key not configured." }) };
+    return { statusCode: 500, body: JSON.stringify({ error: "SerpApi key not configured." }) };
   }
 
   let zip, category;
@@ -22,38 +22,33 @@ exports.handler = async (event) => {
   }
 
   try {
-    const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.websiteUri,places.types,places.businessStatus",
-      },
-      body: JSON.stringify({
-        textQuery: `${category} in ${zip}`,
-        maxResultCount: 20,
-      }),
+    const params = new URLSearchParams({
+      engine: "google_maps",
+      q: `${category} in ${zip}`,
+      type: "search",
+      api_key: apiKey,
     });
 
+    const response = await fetch(`https://serpapi.com/search.json?${params}`);
     const data = await response.json();
 
-    if (!response.ok) {
-      return { statusCode: 500, body: JSON.stringify({ error: data.error?.message || "Google API error." }) };
+    if (data.error) {
+      return { statusCode: 500, body: JSON.stringify({ error: data.error }) };
     }
 
-    const places = data.places || [];
+    const places = data.local_results || [];
 
     // Filter for businesses with no website — these are our targets
     const leads = places
-      .filter((p) => !p.websiteUri && p.businessStatus === "OPERATIONAL")
+      .filter((p) => !p.website)
       .map((p, i) => ({
         id: Date.now() + i,
-        businessName: p.displayName?.text || "Unknown Business",
+        businessName: p.title || "Unknown Business",
         category: category,
-        address: p.formattedAddress || "",
-        phone: p.nationalPhoneNumber || "Not listed",
+        address: p.address || "",
+        phone: p.phone || "Not listed",
         rating: p.rating || 0,
-        reviews: p.userRatingCount || 0,
+        reviews: p.reviews || 0,
         zip: zip,
         status: "new",
         priority: false,
@@ -76,7 +71,6 @@ exports.handler = async (event) => {
         },
       }));
 
-    // Log the zip to history
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
@@ -86,3 +80,4 @@ exports.handler = async (event) => {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
+

@@ -499,7 +499,7 @@ const Settings = ({user}) => {
   };
   const apiFields=[
     ["anthropic","Anthropic API","AI insights & outreach generation","ANTHROPIC_API_KEY"],
-    ["googlePlaces","Google Places API","Lead discovery by zip code","GOOGLE_PLACES_KEY"],
+    ["serpapi","SerpApi","Lead discovery by zip code — Google Maps data","SERPAPI_KEY"],
     ["blandAi","Bland AI","AI phone call outreach","BLAND_API_KEY"],
     ["cloudflare","Cloudflare Pages","Client demo site hosting","CF_API_TOKEN"],
     ["payment","Payment Processor","Square / Cash App key or base URL","PAYMENT_KEY"],
