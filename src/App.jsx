@@ -448,6 +448,32 @@ const LeadDetail = ({leadId,leads,setLeads,user,onBack}) => {
 
       {/* Outreach Log */}
       <Box label="Outreach Log" accent="#f97316">
+        {/* AI Call button */}
+        {(() => {
+          const [calling,setCalling]=useState(false);
+          const [callMsg,setCallMsg]=useState("");
+          const makeCall=async()=>{
+            if(!window.confirm(`Fire an AI call to ${lead.businessName} at ${lead.phone}?`))return;
+            setCalling(true);setCallMsg("");
+            try{
+              const res=await fetch("/.netlify/functions/make-call",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(lead)});
+              const data=await res.json();
+              if(data.error){setCallMsg(`Error: ${data.error}`);}
+              else{
+                setCallMsg(`✓ Call initiated`);
+                upd({outreachLog:[...lead.outreachLog,{id:Date.now(),date:today(),method:"AI Call",outcome:"In Progress",by:user.id,callId:data.callId}]});
+              }
+            }catch(e){setCallMsg("Failed. Check Bland AI key in Netlify.");}
+            setCalling(false);
+          };
+          return(
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+              <button onClick={makeCall} disabled={calling||!lead.phone||lead.phone==="Not listed"} style={{padding:"9px 20px",borderRadius:9,border:"none",background:calling?"rgba(249,115,22,0.3)":"linear-gradient(135deg,#f97316,#ea580c)",color:"#fff",fontSize:13,fontWeight:700,opacity:(!lead.phone||lead.phone==="Not listed")?0.4:1}}>{calling?"📞 Calling…":"📞 AI Call"}</button>
+              {lead.phone&&lead.phone!=="Not listed"&&<span style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>{lead.phone}</span>}
+              {callMsg&&<span style={{fontSize:11,color:callMsg.startsWith("Error")||callMsg.startsWith("Failed")?"#f43f5e":"#34d399"}}>{callMsg}</span>}
+            </div>
+          );
+        })()}
         <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
           {lead.outreachLog.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.25)",fontStyle:"italic"}}>No outreach logged yet.</div>}
           {lead.outreachLog.map(o=>(<div key={o.id} style={{display:"flex",gap:10,alignItems:"center",background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"9px 12px"}}><Avatar uid={o.by} size={24}/><div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,color:"#fff"}}>{o.method} <span style={{color:"rgba(255,255,255,0.4)",fontWeight:400}}>→</span> {o.outcome}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>{o.date} · {ACCOUNTS[o.by]?.name}</div></div></div>))}
@@ -604,7 +630,17 @@ const Settings = ({user}) => {
 export default function App() {
   const [userId,setUserId]=useState(()=>getSession());
   const [view,setView]=useState("dashboard");
-  const [leads,setLeads]=useState(INITIAL_LEADS);
+  const [leads,setLeadsRaw]=useState(()=>{
+    try{ const saved=localStorage.getItem("ws_leads"); return saved?JSON.parse(saved):INITIAL_LEADS; }
+    catch{ return INITIAL_LEADS; }
+  });
+  const setLeads=(updater)=>{
+    setLeadsRaw(prev=>{
+      const next=typeof updater==="function"?updater(prev):updater;
+      try{ localStorage.setItem("ws_leads",JSON.stringify(next)); }catch{}
+      return next;
+    });
+  };
   const [selLead,setSelLead]=useState(null);
   const [menuOpen,setMenuOpen]=useState(false);
   const [isMobile,setIsMobile]=useState(window.innerWidth<680);
