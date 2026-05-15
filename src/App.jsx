@@ -189,10 +189,43 @@ const Dashboard = ({leads,user,go,setSelLead}) => {
 };
 
 // ─── LEADS LIST ──────────────────────────────────────────────────────────────
+const CATEGORIES = ["Restaurant","Bar","Barbershop","Nail Salon","Auto Repair","Gym","Dentist","Lawyer","Plumber","Electrician","HVAC","Landscaping","Cleaning Service","Pet Grooming","Tattoo Shop","Florist","Bakery","Coffee Shop","Boutique","Photography","Accounting","Chiropractor","Massage","Daycare","Veterinarian"];
+
 const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
   const [search,setSearch]=useState(""); const [fStatus,setFStatus]=useState("all");
   const [fZip,setFZip]=useState(""); const [fPriority,setFPriority]=useState(false);
   const [qMenu,setQMenu]=useState(null);
+  const [searchZip,setSearchZip]=useState("");
+  const [searchCat,setSearchCat]=useState("Restaurant");
+  const [searching,setSearching]=useState(false);
+  const [searchResults,setSearchResults]=useState([]);
+  const [searchMsg,setSearchMsg]=useState("");
+  const [showSearch,setShowSearch]=useState(false);
+
+  const runSearch=async()=>{
+    if(!searchZip.trim()){setSearchMsg("Enter a ZIP code.");return;}
+    setSearching(true); setSearchResults([]); setSearchMsg("");
+    // Log zip history
+    const zips=JSON.parse(localStorage.getItem("ws_zips")||"[]");
+    if(!zips.includes(searchZip)){localStorage.setItem("ws_zips",JSON.stringify([searchZip,...zips].slice(0,20)));}
+    try{
+      const res=await fetch("/.netlify/functions/search-leads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({zip:searchZip,category:searchCat})});
+      const data=await res.json();
+      if(data.error){setSearchMsg(`Error: ${data.error}`);}
+      else{
+        // Filter out any already in leads list
+        const existing=new Set(leads.map(l=>l.businessName.toLowerCase()));
+        const fresh=data.leads.filter(l=>!existing.has(l.businessName.toLowerCase()));
+        setSearchResults(fresh);
+        setSearchMsg(`Found ${data.total} businesses in ${searchZip} — ${data.noWebsite} have no website. ${fresh.length} new to add.`);
+      }
+    }catch(e){setSearchMsg("Search failed. Check your API key in Netlify.");}
+    setSearching(false);
+  };
+
+  const addLead=(l)=>{setLeads(p=>[...p,l]);setSearchResults(p=>p.filter(r=>r.id!==l.id));};
+  const addAll=()=>{setLeads(p=>[...p,...searchResults]);setSearchResults([]);};
+
   let filtered=filterMine?leads.filter(l=>l.assignedTo===user.id||l.coWorkers.includes(user.id)):leads;
   if(search) filtered=filtered.filter(l=>l.businessName.toLowerCase().includes(search.toLowerCase())||l.category.toLowerCase().includes(search.toLowerCase()));
   if(fStatus!=="all") filtered=filtered.filter(l=>l.status===fStatus);
@@ -202,7 +235,44 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
   const upd=(id,u)=>setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l));
   return (
     <div className="fu" style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div style={{paddingTop:4}}><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>{filterMine?"My Leads":"All Leads"}</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:2}}>{filtered.length} lead{filtered.length!==1?"s":""}</div></div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:4}}>
+        <div><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>{filterMine?"My Leads":"All Leads"}</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:2}}>{filtered.length} lead{filtered.length!==1?"s":""}</div></div>
+        {!filterMine&&<button onClick={()=>setShowSearch(!showSearch)} style={{padding:"9px 16px",borderRadius:10,border:"1px solid rgba(99,102,241,0.35)",background:showSearch?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.1)",color:"#a5b4fc",fontSize:13,fontWeight:600}}>🔍 Find Leads</button>}
+      </div>
+
+      {/* ZIP SEARCH */}
+      {showSearch&&!filterMine&&(
+        <Box label="Search for Leads by ZIP" accent="#6366f1">
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+            <input placeholder="ZIP code…" value={searchZip} onChange={e=>setSearchZip(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runSearch()} style={{maxWidth:120}}/>
+            <select value={searchCat} onChange={e=>setSearchCat(e.target.value)} style={{maxWidth:180}}>
+              {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+            </select>
+            <button onClick={runSearch} disabled={searching} style={{padding:"9px 20px",borderRadius:10,border:"none",background:searching?"rgba(99,102,241,0.3)":"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontSize:13,fontWeight:600}}>{searching?"Searching…":"Search"}</button>
+          </div>
+          {searchMsg&&<div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:10}}>{searchMsg}</div>}
+          {searchResults.length>0&&(
+            <>
+              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+                <button onClick={addAll} style={{padding:"7px 16px",borderRadius:8,border:"1px solid rgba(16,185,129,0.35)",background:"rgba(16,185,129,0.12)",color:"#34d399",fontSize:12,fontWeight:600}}>+ Add All {searchResults.length}</button>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:320,overflowY:"auto"}}>
+                {searchResults.map(r=>(
+                  <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 14px"}}>
+                    <Score lead={r}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{r.businessName}</div>
+                      <div style={{fontSize:11,color:"rgba(255,255,255,0.38)"}}>{r.address}</div>
+                      <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:1}}>⭐ {r.rating} · {r.reviews} reviews · {r.phone}</div>
+                    </div>
+                    <button onClick={()=>addLead(r)} style={{padding:"6px 14px",borderRadius:8,border:"1px solid rgba(99,102,241,0.35)",background:"rgba(99,102,241,0.12)",color:"#a5b4fc",fontSize:12,fontWeight:600,flexShrink:0}}>+ Add</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Box>
+      )}
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
         <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:170}}/>
         <input placeholder="ZIP…" value={fZip} onChange={e=>setFZip(e.target.value)} style={{maxWidth:90}}/>
