@@ -687,6 +687,7 @@ const Settings = ({user}) => {
         </div>
         {testMsg&&<div style={{fontSize:12,color:testMsg.startsWith("Error")||testMsg.startsWith("Failed")?"#f43f5e":"#34d399"}}>{testMsg}</div>}
       </Box>
+      <Box label={`Change Password — ${user.name}`} accent="#f59e0b">
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:10}}>
           <input type="password" placeholder="Current password" value={pw.current} onChange={e=>setPw({...pw,current:e.target.value})}/>
           <input type="password" placeholder="New password" value={pw.newPw} onChange={e=>setPw({...pw,newPw:e.target.value})}/>
