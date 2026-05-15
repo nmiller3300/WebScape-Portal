@@ -196,31 +196,50 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
   const [fZip,setFZip]=useState(""); const [fPriority,setFPriority]=useState(false);
   const [qMenu,setQMenu]=useState(null);
   const [searchZip,setSearchZip]=useState("");
-  const [searchCat,setSearchCat]=useState("Restaurant");
+  const [selectedCats,setSelectedCats]=useState([]);
   const [searching,setSearching]=useState(false);
   const [searchResults,setSearchResults]=useState([]);
   const [searchMsg,setSearchMsg]=useState("");
   const [showSearch,setShowSearch]=useState(false);
+  const [progress,setProgress]=useState({done:0,total:0});
+
+  const toggleCat=(cat)=>setSelectedCats(p=>p.includes(cat)?p.filter(c=>c!==cat):[...p,cat]);
+  const selectAll=()=>setSelectedCats([...CATEGORIES]);
+  const clearAll=()=>setSelectedCats([]);
 
   const runSearch=async()=>{
     if(!searchZip.trim()){setSearchMsg("Enter a ZIP code.");return;}
+    if(selectedCats.length===0){setSearchMsg("Select at least one category.");return;}
     setSearching(true); setSearchResults([]); setSearchMsg("");
+    setProgress({done:0,total:selectedCats.length});
     // Log zip history
     const zips=JSON.parse(localStorage.getItem("ws_zips")||"[]");
     if(!zips.includes(searchZip)){localStorage.setItem("ws_zips",JSON.stringify([searchZip,...zips].slice(0,20)));}
     try{
-      const res=await fetch("/.netlify/functions/search-leads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({zip:searchZip,category:searchCat})});
-      const data=await res.json();
-      if(data.error){setSearchMsg(`Error: ${data.error}`);}
-      else{
-        // Filter out any already in leads list
-        const existing=new Set(leads.map(l=>l.businessName.toLowerCase()));
-        const fresh=data.leads.filter(l=>!existing.has(l.businessName.toLowerCase()));
-        setSearchResults(fresh);
-        setSearchMsg(`Found ${data.total} businesses in ${searchZip} — ${data.noWebsite} have no website. ${fresh.length} new to add.`);
+      const existing=new Set(leads.map(l=>l.businessName.toLowerCase()));
+      let allLeads=[];
+      let totalFound=0;
+      // Run all category searches in parallel — batched to avoid rate limits
+      const batchSize=3;
+      for(let i=0;i<selectedCats.length;i+=batchSize){
+        const batch=selectedCats.slice(i,i+batchSize);
+        const results=await Promise.all(batch.map(cat=>
+          fetch("/.netlify/functions/search-leads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({zip:searchZip,category:cat})})
+            .then(r=>r.json()).catch(()=>({leads:[],total:0,noWebsite:0}))
+        ));
+        results.forEach(data=>{
+          if(!data.error){
+            totalFound+=data.noWebsite||0;
+            const fresh=( data.leads||[]).filter(l=>!existing.has(l.businessName.toLowerCase())&&!allLeads.find(a=>a.businessName.toLowerCase()===l.businessName.toLowerCase()));
+            allLeads=[...allLeads,...fresh];
+          }
+        });
+        setProgress({done:Math.min(i+batchSize,selectedCats.length),total:selectedCats.length});
       }
+      setSearchResults(allLeads);
+      setSearchMsg(`Searched ${selectedCats.length} categories in ${searchZip} — ${allLeads.length} new leads with no website found.`);
     }catch(e){setSearchMsg("Search failed. Check your API key in Netlify.");}
-    setSearching(false);
+    setSearching(false); setProgress({done:0,total:0});
   };
 
   const addLead=(l)=>{setLeads(p=>[...p,l]);setSearchResults(p=>p.filter(r=>r.id!==l.id));};
@@ -237,19 +256,35 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
     <div className="fu" style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:4}}>
         <div><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>{filterMine?"My Leads":"All Leads"}</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:2}}>{filtered.length} lead{filtered.length!==1?"s":""}</div></div>
-        {!filterMine&&<button onClick={()=>setShowSearch(!showSearch)} style={{padding:"9px 16px",borderRadius:10,border:"1px solid rgba(99,102,241,0.35)",background:showSearch?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.1)",color:"#a5b4fc",fontSize:13,fontWeight:600}}>🔍 Find Leads</button>}
+        {!filterMine&&<button onClick={()=>setShowSearch(!showSearch)} style={{padding:"9px 16px",borderRadius:10,border:`1px solid ${showSearch?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.35)"}`,background:showSearch?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.1)",color:"#a5b4fc",fontSize:13,fontWeight:600}}>🔍 Find Leads</button>}
       </div>
 
       {/* ZIP SEARCH */}
       {showSearch&&!filterMine&&(
         <Box label="Search for Leads by ZIP" accent="#6366f1">
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
-            <input placeholder="ZIP code…" value={searchZip} onChange={e=>setSearchZip(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runSearch()} style={{maxWidth:120}}/>
-            <select value={searchCat} onChange={e=>setSearchCat(e.target.value)} style={{maxWidth:180}}>
-              {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-            </select>
-            <button onClick={runSearch} disabled={searching} style={{padding:"9px 20px",borderRadius:10,border:"none",background:searching?"rgba(99,102,241,0.3)":"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontSize:13,fontWeight:600}}>{searching?"Searching…":"Search"}</button>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
+            <input placeholder="ZIP code…" value={searchZip} onChange={e=>setSearchZip(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runSearch()} style={{maxWidth:130}}/>
+            <button onClick={selectAll} style={{padding:"6px 12px",borderRadius:8,border:"1px solid rgba(99,102,241,0.3)",background:"rgba(99,102,241,0.1)",color:"#a5b4fc",fontSize:11,fontWeight:600}}>Select All</button>
+            <button onClick={clearAll} style={{padding:"6px 12px",borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"rgba(255,255,255,0.4)",fontSize:11,fontWeight:600}}>Clear</button>
+            <span style={{fontSize:12,color:"rgba(255,255,255,0.35)"}}>{selectedCats.length} selected</span>
           </div>
+          {/* Category pills */}
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+            {CATEGORIES.map(cat=>{
+              const on=selectedCats.includes(cat);
+              return <button key={cat} onClick={()=>toggleCat(cat)} style={{padding:"5px 12px",borderRadius:20,border:`1px solid ${on?"rgba(99,102,241,0.6)":"rgba(255,255,255,0.1)"}`,background:on?"rgba(99,102,241,0.2)":"rgba(255,255,255,0.04)",color:on?"#a5b4fc":"rgba(255,255,255,0.45)",fontSize:11,fontWeight:on?700:400,transition:"all .15s"}}>{cat}</button>;
+            })}
+          </div>
+          {/* Progress bar while searching */}
+          {searching&&progress.total>0&&(
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginBottom:5}}>Searching {progress.done} / {progress.total} categories…</div>
+              <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,0.08)",overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${Math.round((progress.done/progress.total)*100)}%`,background:"linear-gradient(90deg,#6366f1,#8b5cf6)",borderRadius:2,transition:"width .3s"}}/>
+              </div>
+            </div>
+          )}
+          <button onClick={runSearch} disabled={searching} style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:searching?"rgba(99,102,241,0.3)":"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontSize:13,fontWeight:600,marginBottom:10}}>{searching?`Searching ${progress.done}/${progress.total}…`:"Search All Selected"}</button>
           {searchMsg&&<div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:10}}>{searchMsg}</div>}
           {searchResults.length>0&&(
             <>
