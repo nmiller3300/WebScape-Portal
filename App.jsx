@@ -43,16 +43,16 @@ const C = {
   surf:   "#131C2E",
   panel:  "#1A2540",
   hover:  "#1F2D4A",
-  border: "rgba(255,255,255,0.06)",
-  bStrong:"rgba(255,255,255,0.12)",
+  border: "rgba(255,255,255,0.07)",
+  bStrong:"rgba(255,255,255,0.14)",
   blue:   "#4B7BF5",
   blueDim:"rgba(75,123,245,0.12)",
   green:  "#22C55E",
   yellow: "#F59E0B",
   red:    "#EF4444",
-  text:   "#EFF2F7",
-  text2:  "#94A3B8",
-  text3:  "#3B4A63",
+  text:   "#F1F5F9",
+  text2:  "#B8C5D6",
+  text3:  "#6B7A96",
 };
 
 const CSS = `
