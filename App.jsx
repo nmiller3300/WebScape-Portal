@@ -561,9 +561,9 @@ const LeadDetail = ({leadId,leads,setLeads,user,onBack}) => {
   const [oForm,setOForm]=useState({date:today(),method:"",outcome:"",by:user.id});
   const [showOForm,setShowOForm]=useState(false);
   const [calling,setCalling]=useState(false); const [callMsg,setCallMsg]=useState("");
-  const [insight,setInsight]=useState(""); const [loadingInsight,setLoadingInsight]=useState(false); const [insightErr,setInsightErr]=useState("");
+  const [insight,setInsight]=useState(lead?.insight||""); const [loadingInsight,setLoadingInsight]=useState(false); const [insightErr,setInsightErr]=useState("");
 
-  useEffect(()=>{if(lead){setDemoInput(lead.demoLink||"");setBilling({amount:"",monthly:"",billingName:"",billingEmail:"",paymentLink:"",status:"unpaid",...(lead.payment||{})});}setTab("overview");},[leadId]);
+  useEffect(()=>{if(lead){setDemoInput(lead.demoLink||"");setBilling({amount:"",monthly:"",billingName:"",billingEmail:"",paymentLink:"",status:"unpaid",...(lead.payment||{})});setInsight(lead.insight||"");setInsightErr("");}setTab("overview");},[leadId]);
 
   if(!lead) return null;
 
@@ -590,7 +590,7 @@ const LeadDetail = ({leadId,leads,setLeads,user,onBack}) => {
       const r=await fetch("/.netlify/functions/generate-insights",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(lead)});
       const d=await r.json();
       if(d.error)setInsightErr(d.error);
-      else setInsight(d.insight);
+      else{setInsight(d.insight);upd({insight:d.insight});}
     }catch(e){setInsightErr("Failed.");}
     setLoadingInsight(false);
   };
