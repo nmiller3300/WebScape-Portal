@@ -195,6 +195,8 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
   const [search,setSearch]=useState(""); const [fStatus,setFStatus]=useState("all");
   const [fZip,setFZip]=useState(""); const [fPriority,setFPriority]=useState(false);
   const [qMenu,setQMenu]=useState(null);
+  const [selecting,setSelecting]=useState(false);
+  const [selected,setSelected]=useState([]);
   const [searchZip,setSearchZip]=useState("");
   const [selectedCats,setSelectedCats]=useState([]);
   const [searching,setSearching]=useState(false);
@@ -387,14 +389,27 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
           {STAGES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
         <button onClick={()=>setFPriority(!fPriority)} style={{padding:"7px 12px",borderRadius:10,border:`1px solid ${fPriority?"rgba(251,191,36,0.5)":"rgba(255,255,255,0.1)"}`,background:fPriority?"rgba(251,191,36,0.12)":"rgba(255,255,255,0.05)",color:fPriority?"#fbbf24":"rgba(255,255,255,0.4)",fontSize:12,fontWeight:600}}>★ Priority</button>
+        {!filterMine&&<button onClick={()=>{setSelecting(!selecting);setSelected([]);}} style={{padding:"7px 12px",borderRadius:10,border:`1px solid ${selecting?"rgba(244,63,94,0.5)":"rgba(255,255,255,0.1)"}`,background:selecting?"rgba(244,63,94,0.12)":"rgba(255,255,255,0.05)",color:selecting?"#f43f5e":"rgba(255,255,255,0.4)",fontSize:12,fontWeight:600}}>{selecting?"Cancel Select":"☑ Select"}</button>}
       </div>
+      {/* Bulk action bar */}
+      {selecting&&selected.length>0&&(
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",...G,background:"rgba(244,63,94,0.08)",border:"1px solid rgba(244,63,94,0.2)"}}>
+          <span style={{fontSize:13,color:"rgba(255,255,255,0.7)",flex:1}}>{selected.length} lead{selected.length!==1?"s":""} selected</span>
+          <button onClick={()=>{setSelected(filtered.map(l=>l.id));}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"transparent",color:"rgba(255,255,255,0.5)",fontSize:12}}>Select All</button>
+          <button onClick={()=>{if(window.confirm(`Remove ${selected.length} lead${selected.length!==1?"s":""}?`)){setLeads(p=>p.filter(l=>!selected.includes(l.id)));setSelected([]);setSelecting(false);}}} style={{padding:"6px 16px",borderRadius:8,border:"none",background:"#f43f5e",color:"#fff",fontSize:12,fontWeight:700}}>🗑 Remove Selected</button>
+        </div>
+      )}
       <div style={{display:"flex",flexDirection:"column",gap:6}}>
         {filtered.length===0&&<div style={{...G,padding:32,textAlign:"center",color:"rgba(255,255,255,0.25)",fontSize:13}}>No leads found.</div>}
         {filtered.map(lead=>(
-          <div key={lead.id} style={{...G,padding:"13px 16px",display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,0.05)",cursor:"pointer",position:"relative",transition:"background .15s"}}
-            onClick={()=>{setSelLead(lead.id);go("lead-detail");}}
-            onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.09)"}
-            onMouseLeave={e=>e.currentTarget.style.background="rgba(255,255,255,0.05)"}>
+          <div key={lead.id} style={{...G,padding:"13px 16px",display:"flex",alignItems:"center",gap:12,background:selected.includes(lead.id)?"rgba(244,63,94,0.08)":"rgba(255,255,255,0.05)",cursor:"pointer",position:"relative",transition:"background .15s",border:selected.includes(lead.id)?"1px solid rgba(244,63,94,0.25)":"1px solid rgba(255,255,255,0.09)"}}
+            onClick={()=>{
+              if(selecting){setSelected(p=>p.includes(lead.id)?p.filter(i=>i!==lead.id):[...p,lead.id]);}
+              else{setSelLead(lead.id);go("lead-detail");}
+            }}
+            onMouseEnter={e=>{if(!selected.includes(lead.id))e.currentTarget.style.background="rgba(255,255,255,0.09)";}}
+            onMouseLeave={e=>{if(!selected.includes(lead.id))e.currentTarget.style.background="rgba(255,255,255,0.05)";}}>
+            {selecting&&<div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected.includes(lead.id)?"#f43f5e":"rgba(255,255,255,0.2)"}`,background:selected.includes(lead.id)?"#f43f5e":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{selected.includes(lead.id)&&<span style={{color:"#fff",fontSize:11,fontWeight:700}}>✓</span>}</div>}
             <Score lead={lead}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
@@ -405,10 +420,10 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
               <div style={{fontSize:11,color:"rgba(255,255,255,0.32)",marginTop:2}}>📮 {lead.zip} · ⭐ {lead.rating} ({lead.reviews} reviews)</div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
-              {lead.assignedTo&&<Avatar uid={lead.assignedTo} size={24}/>}
-              {lead.coWorkers.slice(0,1).map(cw=><Avatar key={cw} uid={cw} size={20}/>)}
-              <Pill sid={lead.status} sm/>
-              <button onClick={e=>{e.stopPropagation();setQMenu(qMenu===lead.id?null:lead.id);}} style={{width:28,height:28,borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.5)",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⋯</button>
+              {!selecting&&lead.assignedTo&&<Avatar uid={lead.assignedTo} size={24}/>}
+              {!selecting&&lead.coWorkers.slice(0,1).map(cw=><Avatar key={cw} uid={cw} size={20}/>)}
+              {!selecting&&<Pill sid={lead.status} sm/>}
+              {!selecting&&<button onClick={e=>{e.stopPropagation();setQMenu(qMenu===lead.id?null:lead.id);}} style={{width:28,height:28,borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.5)",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⋯</button>}
             </div>
             {qMenu===lead.id&&(
               <div onClick={e=>e.stopPropagation()} style={{position:"absolute",right:12,top:54,zIndex:50,...G,background:"rgba(12,12,28,0.97)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",padding:8,minWidth:180,boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
