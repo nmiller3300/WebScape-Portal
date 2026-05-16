@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 const getPW       = () => JSON.parse(localStorage.getItem("ws_pw") || '{"nmiller3300":"1","white":"1"}');
@@ -9,63 +9,134 @@ const clearSession= () => localStorage.removeItem("ws_session");
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const ACCOUNTS = {
-  nmiller3300: { id:"nmiller3300", name:"Miller", initials:"M", color:"#6366f1", role:"Owner" },
-  white:       { id:"white",       name:"White",  initials:"W", color:"#f59e0b", role:"Partner" },
+  nmiller3300: { id:"nmiller3300", name:"Miller", initials:"M", color:"#4B7BF5" , role:"Owner"   },
+  white:       { id:"white",       name:"White",  initials:"W", color:"#F59E0B" , role:"Partner" },
 };
 
 const STAGES = [
-  { id:"new",               label:"New Lead",             color:"#64748b", bg:"rgba(100,116,139,0.2)" },
-  { id:"under-review",      label:"Under Review",         color:"#3b82f6", bg:"rgba(59,130,246,0.2)"  },
-  { id:"demo-building",     label:"Demo Building",        color:"#8b5cf6", bg:"rgba(139,92,246,0.2)"  },
-  { id:"demo-ready",        label:"Demo Ready",           color:"#06b6d4", bg:"rgba(6,182,212,0.2)"   },
-  { id:"outreach-sent",     label:"Outreach Sent",        color:"#f59e0b", bg:"rgba(245,158,11,0.2)"  },
-  { id:"in-conversation",   label:"In Conversation",      color:"#f97316", bg:"rgba(249,115,22,0.2)"  },
-  { id:"proposal-sent",     label:"Proposal Sent",        color:"#ec4899", bg:"rgba(236,72,153,0.2)"  },
-  { id:"closed-won",        label:"Signed",               color:"#10b981", bg:"rgba(16,185,129,0.2)"  },
-  { id:"declined-designer", label:"Declined by Designer", color:"#ef4444", bg:"rgba(239,68,68,0.2)"   },
-  { id:"declined-client",   label:"Declined by Client",   color:"#f43f5e", bg:"rgba(244,63,94,0.2)"   },
+  { id:"new",               label:"New",               color:"#64748B" },
+  { id:"under-review",      label:"Under Review",      color:"#3B82F6" },
+  { id:"demo-building",     label:"Demo Building",     color:"#8B5CF6" },
+  { id:"demo-ready",        label:"Demo Ready",        color:"#06B6D4" },
+  { id:"outreach-sent",     label:"Outreach Sent",     color:"#F59E0B" },
+  { id:"in-conversation",   label:"In Conversation",   color:"#F97316" },
+  { id:"proposal-sent",     label:"Proposal Sent",     color:"#EC4899" },
+  { id:"closed-won",        label:"Signed",            color:"#22C55E" },
+  { id:"declined-designer", label:"Declined · Us",     color:"#EF4444" },
+  { id:"declined-client",   label:"Declined · Client", color:"#F43F5E" },
 ];
-const stageMap      = Object.fromEntries(STAGES.map(s => [s.id, s]));
-const mainStages    = STAGES.filter(s => !s.id.startsWith("declined"));
-const declineStages = STAGES.filter(s =>  s.id.startsWith("declined"));
+const stageMap   = Object.fromEntries(STAGES.map(s => [s.id, s]));
+const mainStages = STAGES.filter(s => !s.id.startsWith("declined"));
+const declineStages = STAGES.filter(s => s.id.startsWith("declined"));
 
-const SOURCES  = ["Google Maps","Drove By","White Found It","Miller Found It","Referral","Social Media","Other"];
-const METHODS  = ["Call","Text","Email","In Person"];
-const OUTCOMES = ["No Answer","Left Voicemail","Responded","Not Interested","Scheduled Follow-up"];
-const PAY_COLORS = { unpaid:"#f59e0b", pending:"#06b6d4", paid:"#10b981", overdue:"#ef4444" };
+const CATEGORIES = ["Restaurant","Bar","Barbershop","Nail Salon","Auto Repair","Gym","Dentist","Lawyer","Plumber","Electrician","HVAC","Landscaping","Cleaning Service","Pet Grooming","Tattoo Shop","Florist","Bakery","Coffee Shop","Boutique","Photography","Accounting","Chiropractor","Massage","Daycare","Veterinarian","Donut Shop","Other"];
+const SOURCES    = ["Google Maps","Drove By","White Found It","Miller Found It","Referral","Social Media","Manual Entry","Other"];
+const METHODS    = ["Call","Text","Email","In Person","AI Call"];
+const OUTCOMES   = ["No Answer","Left Voicemail","Responded","Interested","Not Interested","Reached Manager","Scheduled Follow-up"];
+const PAY_STATUS = { unpaid:"#F59E0B", pending:"#06B6D4", paid:"#22C55E", overdue:"#EF4444" };
 
 const INITIAL_LEADS = [];
 
-// ─── STYLES ───────────────────────────────────────────────────────────────────
-const BG  = "radial-gradient(ellipse at 20% 20%,rgba(99,102,241,0.28) 0%,transparent 55%),radial-gradient(ellipse at 80% 80%,rgba(6,182,212,0.2) 0%,transparent 55%),radial-gradient(ellipse at 65% 10%,rgba(139,92,246,0.16) 0%,transparent 45%),#070714";
-const G   = {background:"rgba(255,255,255,0.07)",backdropFilter:"blur(24px) saturate(180%)",WebkitBackdropFilter:"blur(24px) saturate(180%)",border:"1px solid rgba(255,255,255,0.11)",borderRadius:"16px"};
-const GS  = {...G,background:"rgba(255,255,255,0.11)",borderRadius:"20px",border:"1px solid rgba(255,255,255,0.17)"};
-const FF  = "-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif";
-const CSS = `*{box-sizing:border-box;margin:0;padding:0;}::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px;}input,textarea,select{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-family:${FF};font-size:13px;padding:9px 12px;outline:none;transition:border-color .2s;width:100%;}input:focus,textarea:focus,select:focus{border-color:rgba(99,102,241,0.6);}input::placeholder,textarea::placeholder{color:rgba(255,255,255,0.25);}select option{background:#12122a;color:#fff;}input[type=number]::-webkit-inner-spin-button{opacity:.3;}button{cursor:pointer;font-family:${FF};}@keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}@keyframes si{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}.fu{animation:fu .35s ease forwards;}.si{animation:si .28s ease forwards;}`;
+// ─── TOKENS ──────────────────────────────────────────────────────────────────
+const C = {
+  bg:     "#0C1221",
+  surf:   "#131C2E",
+  panel:  "#1A2540",
+  hover:  "#1F2D4A",
+  border: "rgba(255,255,255,0.06)",
+  bStrong:"rgba(255,255,255,0.12)",
+  blue:   "#4B7BF5",
+  blueDim:"rgba(75,123,245,0.12)",
+  green:  "#22C55E",
+  yellow: "#F59E0B",
+  red:    "#EF4444",
+  text:   "#EFF2F7",
+  text2:  "#94A3B8",
+  text3:  "#3B4A63",
+};
 
-// ─── MICRO COMPONENTS ────────────────────────────────────────────────────────
+const CSS = `
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:${C.bg};color:${C.text};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;}
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
+  input,textarea,select{
+    background:${C.panel};border:1px solid ${C.bStrong};border-radius:6px;
+    color:${C.text};font-family:inherit;font-size:13px;padding:8px 12px;
+    outline:none;transition:border-color .15s;width:100%;
+  }
+  input:focus,textarea:focus,select:focus{border-color:${C.blue};}
+  input::placeholder,textarea::placeholder{color:${C.text3};}
+  select option{background:${C.surf};}
+  button{cursor:pointer;font-family:inherit;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .anim{animation:fadeIn .25s ease forwards;}
+`;
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
 const ts    = () => new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});
 const today = () => new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});
 
-const Avatar = ({uid,size=28}) => {
+const Av = ({uid,size=26}) => {
   const u=ACCOUNTS[uid]; if(!u) return null;
-  return <div style={{width:size,height:size,borderRadius:"50%",background:u.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*.38,fontWeight:700,color:"#fff",flexShrink:0,border:"2px solid rgba(255,255,255,0.18)"}}>{u.initials}</div>;
+  return <div style={{width:size,height:size,borderRadius:"50%",background:u.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*.38,fontWeight:700,color:"#fff",flexShrink:0}}>{u.initials}</div>;
 };
 
-const Pill = ({sid,sm}) => {
+const StatusPill = ({sid,sm}) => {
   const s=stageMap[sid]||stageMap.new;
-  return <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:sm?"2px 8px":"5px 11px",borderRadius:20,fontSize:sm?9:11,fontWeight:700,background:s.bg,color:s.color,border:`1px solid ${s.color}40`,whiteSpace:"nowrap"}}><span style={{width:5,height:5,borderRadius:"50%",background:s.color,flexShrink:0}}/>{s.label}</span>;
+  return (
+    <span style={{
+      display:"inline-flex",alignItems:"center",gap:5,
+      padding:sm?"2px 8px":"4px 10px",
+      borderRadius:4,fontSize:sm?10:11,fontWeight:600,
+      background:`${s.color}18`,color:s.color,
+      border:`1px solid ${s.color}30`,whiteSpace:"nowrap",
+    }}>
+      <span style={{width:5,height:5,borderRadius:"50%",background:s.color,flexShrink:0}}/>
+      {s.label}
+    </span>
+  );
 };
 
-const Score = ({lead}) => {
+const ScoreBadge = ({lead}) => {
   const n=Math.min(10,Math.floor((lead.reviews/20)+lead.rating));
-  const c=n>=8?"#10b981":n>=5?"#f59e0b":"#ef4444";
-  return <div style={{width:34,height:34,borderRadius:"50%",border:`2px solid ${c}`,background:`${c}12`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:c,flexShrink:0}}>{n}</div>;
+  const c=n>=8?C.green:n>=5?C.yellow:C.red;
+  return (
+    <div style={{
+      width:30,height:30,borderRadius:6,
+      border:`1.5px solid ${c}`,background:`${c}12`,
+      display:"flex",alignItems:"center",justifyContent:"center",
+      fontSize:11,fontWeight:700,color:c,flexShrink:0,
+    }}>{n}</div>
+  );
 };
 
-const Box = ({label,children,accent,style={}}) => (
-  <div style={{...G,padding:18,border:accent?`1px solid ${accent}25`:"1px solid rgba(255,255,255,0.09)",...style}}>
-    <div style={{fontSize:10,fontWeight:700,color:accent||"rgba(255,255,255,0.35)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:14}}>{label}</div>
+const Btn = ({onClick,children,variant="primary",disabled,style={}}) => {
+  const v = {
+    primary: {background:C.blue,color:"#fff",border:"none"},
+    ghost:   {background:"transparent",color:C.text2,border:`1px solid ${C.bStrong}`},
+    danger:  {background:"rgba(239,68,68,0.12)",color:C.red,border:`1px solid rgba(239,68,68,0.25)`},
+    success: {background:"rgba(34,197,94,0.12)",color:C.green,border:`1px solid rgba(34,197,94,0.25)`},
+    subtle:  {background:C.panel,color:C.text2,border:`1px solid ${C.border}`},
+  };
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      padding:"7px 14px",borderRadius:6,fontSize:13,fontWeight:500,
+      transition:"opacity .15s",opacity:disabled?.4:1,...v[variant],...style,
+    }}>{children}</button>
+  );
+};
+
+const Field = ({label,children,style={}}) => (
+  <div style={{display:"flex",flexDirection:"column",gap:5,...style}}>
+    <label style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase"}}>{label}</label>
+    {children}
+  </div>
+);
+
+const Card = ({children,style={}}) => (
+  <div style={{background:C.surf,border:`1px solid ${C.border}`,borderRadius:8,padding:16,...style}}>
     {children}
   </div>
 );
@@ -75,27 +146,32 @@ const Login = ({onLogin}) => {
   const [u,setU]=useState(""); const [p,setP]=useState("");
   const [err,setErr]=useState(""); const [loading,setLoading]=useState(false);
   const submit=()=>{
-    if(!u.trim()||!p){setErr("Please enter username and password.");return;}
     setLoading(true);
     setTimeout(()=>{
       const pw=getPW();
       if(ACCOUNTS[u.toLowerCase()]&&pw[u.toLowerCase()]===p){onLogin(u.toLowerCase());}
       else{setErr("Invalid credentials.");setLoading(false);}
-    },600);
+    },500);
   };
   return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:BG,padding:20,fontFamily:FF}}>
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:C.bg,padding:20}}>
       <style>{CSS}</style>
-      <div className="fu" style={{...GS,padding:"46px 38px",width:"100%",maxWidth:380,textAlign:"center"}}>
-        <div style={{fontSize:11,letterSpacing:"0.35em",textTransform:"uppercase",color:"rgba(99,102,241,0.85)",marginBottom:7,fontWeight:700}}>WEBSCAPE</div>
-        <div style={{fontSize:30,fontWeight:700,letterSpacing:"-0.5px",color:"#fff",marginBottom:5}}>Lead Portal</div>
-        <div style={{fontSize:13,color:"rgba(255,255,255,0.35)",marginBottom:30}}>Sign in to continue</div>
-        <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14,textAlign:"left"}}>
-          <input placeholder="Username" value={u} onChange={e=>{setU(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()}/>
-          <input placeholder="Password" type="password" value={p} onChange={e=>{setP(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()}/>
+      <div style={{width:"100%",maxWidth:360}}>
+        <div style={{marginBottom:32,textAlign:"center"}}>
+          <div style={{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:C.blue,fontWeight:600,marginBottom:8}}>WEBSCAPE</div>
+          <div style={{fontSize:26,fontWeight:700,color:C.text}}>Lead Portal</div>
         </div>
-        {err&&<div style={{fontSize:12,color:"#f43f5e",marginBottom:10,textAlign:"left"}}>{err}</div>}
-        <button onClick={submit} disabled={loading} style={{width:"100%",padding:13,borderRadius:10,border:"none",background:loading?"rgba(99,102,241,0.4)":"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontSize:15,fontWeight:600}}>{loading?"Signing in…":"Sign In"}</button>
+        <Card style={{padding:24}}>
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+            <input placeholder="Username" value={u} onChange={e=>{setU(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()}/>
+            <input placeholder="Password" type="password" value={p} onChange={e=>{setP(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&submit()}/>
+          </div>
+          {err&&<div style={{fontSize:12,color:C.red,marginBottom:10}}>{err}</div>}
+          <button onClick={submit} disabled={loading} style={{
+            width:"100%",padding:10,borderRadius:6,border:"none",
+            background:loading?`${C.blue}60`:C.blue,color:"#fff",fontSize:14,fontWeight:600,
+          }}>{loading?"Signing in…":"Sign In"}</button>
+        </Card>
       </div>
     </div>
   );
@@ -103,338 +179,369 @@ const Login = ({onLogin}) => {
 
 // ─── SIDEBAR ─────────────────────────────────────────────────────────────────
 const Sidebar = ({view,go,user,leads,onLogout,isMobile,menuOpen,setMenuOpen}) => {
-  const myCount=leads.filter(l=>l.assignedTo===user.id||l.coWorkers.includes(user.id)).length;
+  const myCount=leads.filter(l=>l.assignedTo===user.id||l.coWorkers?.includes(user.id)).length;
   const signedCount=leads.filter(l=>l.status==="closed-won").length;
-  const nav=[["dashboard","⬡","Dashboard"],["leads","◈","All Leads"],["mine","◎","My Leads"],["clients","★","Clients"],["settings","⊙","Settings"]];
+  const nav=[
+    {id:"dashboard",icon:"▦",label:"Dashboard"},
+    {id:"leads",icon:"≡",label:"All Leads",count:leads.filter(l=>!["closed-won","declined-designer","declined-client"].includes(l.status)).length},
+    {id:"mine",icon:"◎",label:"My Leads",count:myCount},
+    {id:"clients",icon:"★",label:"Clients",count:signedCount},
+    {id:"settings",icon:"⊙",label:"Settings"},
+  ];
   const inner=(
-    <div style={{display:"flex",flexDirection:"column",height:"100%",padding:"20px 12px"}}>
-      <div style={{padding:"4px 10px 16px",borderBottom:"1px solid rgba(255,255,255,0.08)",marginBottom:8}}>
-        <div style={{fontSize:10,letterSpacing:"0.32em",color:"rgba(99,102,241,0.8)",fontWeight:700,textTransform:"uppercase"}}>WEBSCAPE</div>
-        <div style={{fontSize:17,fontWeight:700,letterSpacing:"-0.3px",color:"#fff"}}>Miller & White</div>
+    <div style={{display:"flex",flexDirection:"column",height:"100%",padding:"16px 12px"}}>
+      <div style={{padding:"8px 8px 20px",borderBottom:`1px solid ${C.border}`,marginBottom:8}}>
+        <div style={{fontSize:10,letterSpacing:"0.25em",color:C.blue,fontWeight:700,textTransform:"uppercase",marginBottom:3}}>WEBSCAPE</div>
+        <div style={{fontSize:15,fontWeight:700,color:C.text}}>Miller & White</div>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:2,flex:1}}>
-        {nav.map(([id,icon,label])=>(
-          <button key={id} onClick={()=>{go(id);if(isMobile)setMenuOpen(false);}} style={{display:"flex",alignItems:"center",gap:9,padding:"10px 10px",borderRadius:10,border:"none",textAlign:"left",background:view===id?"rgba(99,102,241,0.22)":"transparent",color:view===id?"#a5b4fc":"rgba(255,255,255,0.48)",fontSize:13,fontWeight:view===id?600:400,transition:"all .15s"}}>
-            <span style={{fontSize:15}}>{icon}</span>
+      <div style={{display:"flex",flexDirection:"column",gap:1,flex:1}}>
+        {nav.map(({id,icon,label,count})=>(
+          <button key={id} onClick={()=>{go(id);if(isMobile)setMenuOpen(false);}} style={{
+            display:"flex",alignItems:"center",gap:9,padding:"8px 10px",
+            borderRadius:6,border:"none",textAlign:"left",
+            background:view===id?`${C.blue}18`:"transparent",
+            color:view===id?C.blue:C.text2,
+            fontSize:13,fontWeight:view===id?600:400,transition:"all .1s",
+          }}>
+            <span style={{fontSize:14,opacity:.7,width:16,textAlign:"center"}}>{icon}</span>
             <span style={{flex:1}}>{label}</span>
-            {id==="mine"&&myCount>0&&<span style={{fontSize:10,background:"rgba(99,102,241,0.3)",color:"#a5b4fc",padding:"1px 6px",borderRadius:8,fontWeight:700}}>{myCount}</span>}
-            {id==="clients"&&signedCount>0&&<span style={{fontSize:10,background:"rgba(16,185,129,0.2)",color:"#34d399",padding:"1px 6px",borderRadius:8,fontWeight:700}}>{signedCount}</span>}
+            {count>0&&<span style={{fontSize:10,fontWeight:700,background:view===id?`${C.blue}25`:`${C.text3}30`,color:view===id?C.blue:C.text2,padding:"1px 6px",borderRadius:10}}>{count}</span>}
           </button>
         ))}
       </div>
-      <div style={{paddingTop:12,borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+      <div style={{paddingTop:12,borderTop:`1px solid ${C.border}`}}>
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",marginBottom:4}}>
-          <Avatar uid={user.id} size={30}/>
-          <div><div style={{fontSize:12,fontWeight:600,color:"#fff"}}>{user.name}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.35)"}}>{user.role}</div></div>
+          <Av uid={user.id} size={28}/>
+          <div><div style={{fontSize:12,fontWeight:600,color:C.text}}>{user.name}</div><div style={{fontSize:10,color:C.text3}}>{user.role}</div></div>
         </div>
-        <button onClick={onLogout} style={{width:"100%",padding:"7px 10px",borderRadius:8,border:"none",background:"transparent",color:"rgba(255,255,255,0.28)",fontSize:12,textAlign:"left"}}>Sign out</button>
+        <button onClick={onLogout} style={{width:"100%",padding:"6px 10px",borderRadius:6,border:"none",background:"transparent",color:C.text3,fontSize:12,textAlign:"left"}}>Sign out</button>
       </div>
     </div>
   );
   if(isMobile) return (
     <>
-      <button onClick={()=>setMenuOpen(!menuOpen)} style={{position:"fixed",top:12,left:12,zIndex:300,width:40,height:40,borderRadius:10,border:"1px solid rgba(255,255,255,0.12)",background:"rgba(10,10,30,0.85)",backdropFilter:"blur(12px)",color:"#fff",fontSize:17,display:"flex",alignItems:"center",justifyContent:"center"}}>☰</button>
-      {menuOpen&&<div onClick={()=>setMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.5)",backdropFilter:"blur(3px)"}}/>}
-      <div style={{position:"fixed",top:0,left:0,bottom:0,width:220,zIndex:250,background:"rgba(8,8,22,0.97)",backdropFilter:"blur(32px)",WebkitBackdropFilter:"blur(32px)",borderRight:"1px solid rgba(255,255,255,0.1)",transform:menuOpen?"translateX(0)":"translateX(-100%)",transition:"transform .24s ease"}}>{inner}</div>
+      <button onClick={()=>setMenuOpen(!menuOpen)} style={{position:"fixed",top:12,left:12,zIndex:300,width:38,height:38,borderRadius:8,border:`1px solid ${C.bStrong}`,background:C.surf,color:C.text,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>☰</button>
+      {menuOpen&&<div onClick={()=>setMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.6)"}}/>}
+      <div style={{position:"fixed",top:0,left:0,bottom:0,width:220,zIndex:250,background:C.surf,borderRight:`1px solid ${C.border}`,transform:menuOpen?"translateX(0)":"translateX(-100%)",transition:"transform .22s ease"}}>{inner}</div>
     </>
   );
-  return <div style={{...G,width:210,flexShrink:0,height:"calc(100vh - 24px)"}}>{inner}</div>;
+  return <div style={{width:220,flexShrink:0,background:C.surf,borderRight:`1px solid ${C.border}`,height:"100vh",position:"sticky",top:0}}>{inner}</div>;
 };
 
 // ─── DASHBOARD ───────────────────────────────────────────────────────────────
 const Dashboard = ({leads,user,go,setSelLead}) => {
   const [goal,setGoal]=useState(()=>localStorage.getItem("ws_goal")||"");
-  const [editing,setEditing]=useState(false);
-  const [gi,setGi]=useState(goal);
+  const [editGoal,setEditGoal]=useState(false);
+  const [gi,setGi]=useState("");
   const open=leads.filter(l=>!["closed-won","declined-designer","declined-client"].includes(l.status));
   const signed=leads.filter(l=>l.status==="closed-won");
   const mrr=signed.reduce((a,l)=>a+(parseFloat(l.payment?.monthly)||0),0);
-  const mine=leads.filter(l=>(l.assignedTo===user.id||l.coWorkers.includes(user.id))&&!["closed-won","declined-designer","declined-client"].includes(l.status));
-  const goalN=parseFloat(goal)||0; const pct=goalN>0?Math.min(100,Math.round((mrr/goalN)*100)):0;
-  const saveGoal=()=>{localStorage.setItem("ws_goal",gi);setGoal(gi);setEditing(false);};
-  const activity=leads.filter(l=>l.notes.length>0||l.outreachLog.length>0).slice(0,5);
+  const mine=leads.filter(l=>(l.assignedTo===user.id||l.coWorkers?.includes(user.id))&&!["closed-won","declined-designer","declined-client"].includes(l.status));
+  const goalN=parseFloat(goal)||0;
+  const pct=goalN>0?Math.min(100,Math.round((mrr/goalN)*100)):0;
+  const saveGoal=()=>{localStorage.setItem("ws_goal",gi);setGoal(gi);setEditGoal(false);};
+  const recent=leads.slice(-5).reverse();
+
+  const Stat=({label,value,color,sub})=>(
+    <Card style={{flex:1,minWidth:140}}>
+      <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8}}>{label}</div>
+      <div style={{fontSize:28,fontWeight:700,color:color||C.text,letterSpacing:"-0.5px",lineHeight:1}}>{value}</div>
+      {sub&&<div style={{fontSize:11,color:C.text3,marginTop:5}}>{sub}</div>}
+    </Card>
+  );
+
   return (
-    <div className="fu" style={{display:"flex",flexDirection:"column",gap:16}}>
-      <div style={{paddingTop:4}}><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>Hey {user.name} 👋</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:3}}>Here's your pipeline today.</div></div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        {[[open.length,"Open Leads","#a5b4fc"],[signed.length,"Signed","#34d399"],[`$${mrr}/mo`,"Recurring","#fbbf24"],[mine.length,"My Active","#67e8f9"]].map(([v,l,c])=>(
-          <div key={l} style={{...G,padding:"16px 18px"}}><div style={{fontSize:26,fontWeight:700,color:c,letterSpacing:"-0.5px"}}>{v}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginTop:2}}>{l}</div></div>
-        ))}
+    <div className="anim" style={{display:"flex",flexDirection:"column",gap:20,padding:24}}>
+      <div>
+        <div style={{fontSize:18,fontWeight:700,color:C.text}}>Good to see you, {user.name} 👋</div>
+        <div style={{fontSize:13,color:C.text2,marginTop:3}}>Here's your pipeline overview.</div>
       </div>
-      <Box label="Revenue Goal" accent="#f59e0b">
-        {editing?(
-          <div style={{display:"flex",gap:8}}>
-            <div style={{position:"relative",flex:1}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:"rgba(255,255,255,0.4)",fontWeight:600}}>$</span><input value={gi} onChange={e=>setGi(e.target.value)} type="number" placeholder="Monthly goal…" style={{paddingLeft:22}}/></div>
-            <button onClick={saveGoal} style={{padding:"9px 16px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#fff",fontSize:13,fontWeight:600}}>Set</button>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+        <Stat label="Open Leads" value={open.length} color={C.blue}/>
+        <Stat label="Signed" value={signed.length} color={C.green}/>
+        <Stat label="Recurring" value={`$${mrr}/mo`} color={C.yellow}/>
+        <Stat label="My Active" value={mine.length} color="#A78BFA"/>
+      </div>
+
+      {/* Revenue Goal */}
+      <Card>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:goalN>0?14:0}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:4}}>Revenue Goal</div>
+            {editGoal?(
+              <div style={{display:"flex",gap:8,marginTop:4}}>
+                <input value={gi} onChange={e=>setGi(e.target.value)} placeholder="Monthly goal…" type="number" style={{maxWidth:160}}/>
+                <Btn onClick={saveGoal} variant="primary">Set</Btn>
+                <Btn onClick={()=>setEditGoal(false)} variant="ghost">Cancel</Btn>
+              </div>
+            ):(
+              <div style={{display:"flex",alignItems:"baseline",gap:8,marginTop:2}}>
+                <span style={{fontSize:24,fontWeight:700,color:C.yellow}}>${mrr}</span>
+                {goalN>0&&<span style={{fontSize:13,color:C.text3}}>/ ${goalN} goal</span>}
+              </div>
+            )}
           </div>
-        ):(
+          {!editGoal&&<Btn onClick={()=>{setGi(goal);setEditGoal(true);}} variant="ghost" style={{fontSize:11}}>{goalN>0?"Edit":"Set Goal"}</Btn>}
+        </div>
+        {goalN>0&&!editGoal&&(
           <>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:goalN>0?10:0}}>
-              <div><span style={{fontSize:22,fontWeight:700,color:"#fbbf24"}}>${mrr}</span><span style={{fontSize:13,color:"rgba(255,255,255,0.35)"}}>{goalN>0?` / $${goalN} goal`:""}</span></div>
-              <button onClick={()=>{setGi(goal);setEditing(true);}} style={{fontSize:11,color:"rgba(255,255,255,0.35)",background:"transparent",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"4px 10px"}}>{goalN>0?"Edit":"Set Goal"}</button>
+            <div style={{height:6,borderRadius:3,background:C.panel,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg,${C.blue},${C.green})`,borderRadius:3,transition:"width .4s"}}/>
             </div>
-            {goalN>0&&<><div style={{height:6,borderRadius:3,background:"rgba(255,255,255,0.08)",overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#f59e0b,#10b981)",borderRadius:3}}/></div><div style={{fontSize:11,color:"rgba(255,255,255,0.3)",marginTop:5}}>{pct}% of goal</div></>}
+            <div style={{fontSize:11,color:C.text3,marginTop:6}}>{pct}% of monthly goal</div>
           </>
         )}
-      </Box>
-      <Box label="Pipeline Breakdown">
-        {STAGES.filter(s=>!s.id.startsWith("declined")).map(s=>{const c=leads.filter(l=>l.status===s.id).length;if(!c)return null;const p2=Math.round((c/leads.length)*100);return(<div key={s.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}><span style={{width:7,height:7,borderRadius:"50%",background:s.color,flexShrink:0}}/><span style={{fontSize:12,color:"rgba(255,255,255,0.6)",flex:1}}>{s.label}</span><div style={{width:60,height:4,borderRadius:2,background:"rgba(255,255,255,0.07)",overflow:"hidden"}}><div style={{height:"100%",width:`${p2}%`,background:s.color}}/></div><span style={{fontSize:12,fontWeight:600,color:s.color,width:16,textAlign:"right"}}>{c}</span></div>);})}
-      </Box>
-      <Box label="Team Activity">
-        {activity.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.25)",fontStyle:"italic"}}>No activity yet.</div>}
-        {activity.map(l=>{const n=l.notes[l.notes.length-1];const o=l.outreachLog[l.outreachLog.length-1];const item=n||o;if(!item)return null;return(<button key={l.id} onClick={()=>{setSelLead(l.id);go("lead-detail");}} style={{display:"flex",gap:10,alignItems:"flex-start",width:"100%",background:"transparent",border:"none",textAlign:"left",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",cursor:"pointer"}}><Avatar uid={"author" in item?item.author:item.by} size={26}/><div><div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}><strong style={{color:"#fff"}}>{l.businessName}</strong> — {"text" in item?item.text.slice(0,50)+"…":`${item.method} · ${item.outcome}`}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",marginTop:2}}>{"ts" in item?item.ts:item.date}</div></div></button>);})}
-      </Box>
+      </Card>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        {/* Pipeline */}
+        <Card>
+          <div style={{fontSize:12,fontWeight:600,color:C.text2,marginBottom:14}}>Pipeline</div>
+          {STAGES.filter(s=>!s.id.startsWith("declined")).map(s=>{
+            const c=leads.filter(l=>l.status===s.id).length; if(!c) return null;
+            return (
+              <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                <div style={{width:7,height:7,borderRadius:"50%",background:s.color,flexShrink:0}}/>
+                <span style={{fontSize:12,color:C.text2,flex:1}}>{s.label}</span>
+                <div style={{width:80,height:3,borderRadius:2,background:C.panel,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${Math.round((c/Math.max(leads.length,1))*100)}%`,background:s.color}}/>
+                </div>
+                <span style={{fontSize:12,fontWeight:600,color:s.color,width:16,textAlign:"right"}}>{c}</span>
+              </div>
+            );
+          })}
+        </Card>
+        {/* Recent */}
+        <Card>
+          <div style={{fontSize:12,fontWeight:600,color:C.text2,marginBottom:14}}>Recent Leads</div>
+          {recent.length===0&&<div style={{fontSize:12,color:C.text3,fontStyle:"italic"}}>No leads yet.</div>}
+          {recent.map(l=>(
+            <button key={l.id} onClick={()=>{setSelLead(l.id);go("lead-detail");}} style={{
+              display:"flex",alignItems:"center",gap:10,width:"100%",
+              background:"transparent",border:"none",padding:"7px 0",
+              borderBottom:`1px solid ${C.border}`,cursor:"pointer",textAlign:"left",
+            }}>
+              <ScoreBadge lead={l}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.businessName}</div>
+                <div style={{fontSize:11,color:C.text3}}>{l.zip} · {l.category}</div>
+              </div>
+              <StatusPill sid={l.status} sm/>
+            </button>
+          ))}
+        </Card>
+      </div>
     </div>
   );
 };
 
 // ─── LEADS LIST ──────────────────────────────────────────────────────────────
-const CATEGORIES = ["Restaurant","Bar","Barbershop","Nail Salon","Auto Repair","Gym","Dentist","Lawyer","Plumber","Electrician","HVAC","Landscaping","Cleaning Service","Pet Grooming","Tattoo Shop","Florist","Bakery","Coffee Shop","Boutique","Photography","Accounting","Chiropractor","Massage","Daycare","Veterinarian"];
-
 const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
   const [search,setSearch]=useState(""); const [fStatus,setFStatus]=useState("all");
   const [fZip,setFZip]=useState(""); const [fPriority,setFPriority]=useState(false);
   const [qMenu,setQMenu]=useState(null);
-  const [selecting,setSelecting]=useState(false);
-  const [selected,setSelected]=useState([]);
-  const [searchZip,setSearchZip]=useState("");
-  const [selectedCats,setSelectedCats]=useState([]);
-  const [searching,setSearching]=useState(false);
-  const [searchResults,setSearchResults]=useState([]);
-  const [searchMsg,setSearchMsg]=useState("");
-  const [showSearch,setShowSearch]=useState(false);
-  const [progress,setProgress]=useState({done:0,total:0});
+  const [selecting,setSelecting]=useState(false); const [selected,setSelected]=useState([]);
+  const [showSearch,setShowSearch]=useState(false); const [showManual,setShowManual]=useState(false);
+  const [searchZip,setSearchZip]=useState(""); const [selectedCats,setSelectedCats]=useState([]);
+  const [searching,setSearching]=useState(false); const [searchResults,setSearchResults]=useState([]);
+  const [searchMsg,setSearchMsg]=useState(""); const [progress,setProgress]=useState({done:0,total:0});
+  const [manual,setManual]=useState({businessName:"",category:"",phone:"",address:"",zip:"",rating:"",reviews:"",source:"Manual Entry"});
 
-  const toggleCat=(cat)=>setSelectedCats(p=>p.includes(cat)?p.filter(c=>c!==cat):[...p,cat]);
-  const selectAll=()=>setSelectedCats([...CATEGORIES]);
-  const clearAll=()=>setSelectedCats([]);
+  const toggleCat=cat=>setSelectedCats(p=>p.includes(cat)?p.filter(c=>c!==cat):[...p,cat]);
 
   const runSearch=async()=>{
-    if(!searchZip.trim()){setSearchMsg("Enter a ZIP code.");return;}
-    if(selectedCats.length===0){setSearchMsg("Select at least one category.");return;}
-    setSearching(true); setSearchResults([]); setSearchMsg("");
-    setProgress({done:0,total:selectedCats.length});
-    // Log zip history
+    if(!searchZip.trim()||selectedCats.length===0) return;
+    setSearching(true); setSearchResults([]); setSearchMsg(""); setProgress({done:0,total:selectedCats.length});
     const zips=JSON.parse(localStorage.getItem("ws_zips")||"[]");
-    if(!zips.includes(searchZip)){localStorage.setItem("ws_zips",JSON.stringify([searchZip,...zips].slice(0,20)));}
-    try{
-      const existing=new Set(leads.map(l=>l.businessName.toLowerCase()));
-      let allLeads=[];
-      let totalFound=0;
-      // Run all category searches in parallel — batched to avoid rate limits
-      const batchSize=3;
-      for(let i=0;i<selectedCats.length;i+=batchSize){
-        const batch=selectedCats.slice(i,i+batchSize);
-        const results=await Promise.all(batch.map(cat=>
-          fetch("/.netlify/functions/search-leads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({zip:searchZip,category:cat})})
-            .then(r=>r.json()).catch(()=>({leads:[],total:0,noWebsite:0}))
-        ));
-        results.forEach(data=>{
-          if(!data.error){
-            totalFound+=data.noWebsite||0;
-            const fresh=( data.leads||[]).filter(l=>!existing.has(l.businessName.toLowerCase())&&!allLeads.find(a=>a.businessName.toLowerCase()===l.businessName.toLowerCase()));
-            allLeads=[...allLeads,...fresh];
-          }
-        });
-        setProgress({done:Math.min(i+batchSize,selectedCats.length),total:selectedCats.length});
-      }
-      setSearchResults(allLeads);
-      setSearchMsg(`Searched ${selectedCats.length} categories in ${searchZip} — ${totalFound} total businesses found — ${allLeads.length} with no website to add.`);
-    }catch(e){setSearchMsg("Search failed. Check your API key in Netlify.");}
+    if(!zips.includes(searchZip)) localStorage.setItem("ws_zips",JSON.stringify([searchZip,...zips].slice(0,20)));
+    const existing=new Set(leads.map(l=>l.businessName.toLowerCase()));
+    let all=[];
+    for(let i=0;i<selectedCats.length;i+=3){
+      const batch=selectedCats.slice(i,i+3);
+      const results=await Promise.all(batch.map(cat=>
+        fetch("/.netlify/functions/search-leads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({zip:searchZip,category:cat})})
+          .then(r=>r.json()).catch(()=>({leads:[]}))
+      ));
+      results.forEach(d=>{
+        (d.leads||[]).filter(l=>!existing.has(l.businessName.toLowerCase())&&!all.find(a=>a.businessName.toLowerCase()===l.businessName.toLowerCase())).forEach(l=>all.push(l));
+      });
+      setProgress({done:Math.min(i+3,selectedCats.length),total:selectedCats.length});
+    }
+    setSearchResults(all);
+    setSearchMsg(`${all.length} new businesses found without a website in ${searchZip}.`);
     setSearching(false); setProgress({done:0,total:0});
   };
 
-  const addLead=(l)=>{setLeads(p=>[...p,l]);setSearchResults(p=>p.filter(r=>r.id!==l.id));};
+  const addLead=l=>{setLeads(p=>[...p,l]);setSearchResults(p=>p.filter(r=>r.id!==l.id));};
   const addAll=()=>{setLeads(p=>[...p,...searchResults]);setSearchResults([]);};
-
-  let filtered=filterMine?leads.filter(l=>l.assignedTo===user.id||l.coWorkers.includes(user.id)):leads;
-  if(search) filtered=filtered.filter(l=>l.businessName.toLowerCase().includes(search.toLowerCase())||l.category.toLowerCase().includes(search.toLowerCase()));
-  if(fStatus!=="all") filtered=filtered.filter(l=>l.status===fStatus);
-  if(fZip) filtered=filtered.filter(l=>l.zip.includes(fZip));
-  if(fPriority) filtered=filtered.filter(l=>l.priority);
-  filtered=[...filtered].sort((a,b)=>(b.priority?1:0)-(a.priority?1:0));
-  const upd=(id,u)=>setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l));
-  const [showManual,setShowManual]=useState(false);
-  const [manual,setManual]=useState({businessName:"",category:"",phone:"",address:"",zip:"",rating:"",reviews:"",source:"Manual Entry"});
   const submitManual=()=>{
-    if(!manual.businessName.trim()){return;}
-    const newLead={
-      id:`${Date.now()}-${Math.random().toString(36).slice(2,9)}`,
-      businessName:manual.businessName,category:manual.category||"Other",
-      phone:manual.phone||"Not listed",address:manual.address,zip:manual.zip,
-      rating:parseFloat(manual.rating)||0,reviews:parseInt(manual.reviews)||0,
-      status:"new",priority:false,source:manual.source||"Manual Entry",
-      assignedTo:null,coWorkers:[],claimedBy:null,claimedAt:null,demoLink:"",
-      notes:[],outreachLog:[],
-      payment:{amount:"",monthly:"",billingName:"",billingEmail:"",paymentLink:"",status:"unpaid"},
-    };
-    setLeads(p=>[...p,newLead]);
+    if(!manual.businessName.trim()) return;
+    setLeads(p=>[...p,{id:`${Date.now()}-${Math.random().toString(36).slice(2,9)}`,businessName:manual.businessName,category:manual.category||"Other",phone:manual.phone||"Not listed",address:manual.address,zip:manual.zip,rating:parseFloat(manual.rating)||0,reviews:parseInt(manual.reviews)||0,status:"new",priority:false,source:manual.source,assignedTo:null,coWorkers:[],claimedBy:null,claimedAt:null,demoLink:"",notes:[],outreachLog:[],payment:{amount:"",monthly:"",billingName:"",billingEmail:"",paymentLink:"",status:"unpaid"}}]);
     setManual({businessName:"",category:"",phone:"",address:"",zip:"",rating:"",reviews:"",source:"Manual Entry"});
     setShowManual(false);
   };
 
+  const upd=(id,u)=>setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l));
+
+  let filtered=filterMine?leads.filter(l=>l.assignedTo===user.id||l.coWorkers?.includes(user.id)):leads;
+  if(search) filtered=filtered.filter(l=>l.businessName.toLowerCase().includes(search.toLowerCase())||l.category.toLowerCase().includes(search.toLowerCase()));
+  if(fStatus!=="all") filtered=filtered.filter(l=>l.status===fStatus);
+  if(fZip) filtered=filtered.filter(l=>l.zip?.includes(fZip));
+  if(fPriority) filtered=filtered.filter(l=>l.priority);
+  filtered=[...filtered].sort((a,b)=>(b.priority?1:0)-(a.priority?1:0));
+
   return (
-    <div className="fu" style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:4}}>
-        <div><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>{filterMine?"My Leads":"All Leads"}</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:2}}>{filtered.length} lead{filtered.length!==1?"s":""}</div></div>
-        {!filterMine&&<div style={{display:"flex",gap:8}}>
-          <button onClick={()=>{setShowManual(!showManual);setShowSearch(false);}} style={{padding:"9px 16px",borderRadius:10,border:`1px solid ${showManual?"rgba(16,185,129,0.5)":"rgba(16,185,129,0.3)"}`,background:showManual?"rgba(16,185,129,0.2)":"rgba(16,185,129,0.08)",color:"#34d399",fontSize:13,fontWeight:600}}>+ Add Lead</button>
-          <button onClick={()=>{setShowSearch(!showSearch);setShowManual(false);}} style={{padding:"9px 16px",borderRadius:10,border:`1px solid ${showSearch?"rgba(99,102,241,0.5)":"rgba(99,102,241,0.35)"}`,background:showSearch?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.1)",color:"#a5b4fc",fontSize:13,fontWeight:600}}>🔍 Find Leads</button>
-        </div>}
+    <div className="anim" style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      {/* Header */}
+      <div style={{padding:"16px 24px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:16,fontWeight:700,color:C.text}}>{filterMine?"My Leads":"All Leads"}</div>
+          <div style={{fontSize:12,color:C.text3,marginTop:1}}>{filtered.length} lead{filtered.length!==1?"s":""}</div>
+        </div>
+        {!filterMine&&(
+          <div style={{display:"flex",gap:8}}>
+            <Btn onClick={()=>{setShowManual(!showManual);setShowSearch(false);}} variant={showManual?"primary":"subtle"}>+ Add Lead</Btn>
+            <Btn onClick={()=>{setShowSearch(!showSearch);setShowManual(false);}} variant={showSearch?"primary":"subtle"}>🔍 Find Leads</Btn>
+            <Btn onClick={()=>{setSelecting(!selecting);setSelected([]);}} variant={selecting?"danger":"subtle"}>{selecting?"Cancel":"☑ Select"}</Btn>
+          </div>
+        )}
       </div>
 
-      {/* MANUAL ADD LEAD */}
-      {showManual&&!filterMine&&(
-        <Box label="Add Lead Manually" accent="#10b981">
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-            <div style={{gridColumn:"1/-1"}}>
-              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Business Name *</div>
-              <input value={manual.businessName} onChange={e=>setManual({...manual,businessName:e.target.value})} placeholder="Business name…"/>
-            </div>
-            <div>
-              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Category</div>
-              <select value={manual.category} onChange={e=>setManual({...manual,category:e.target.value})}>
-                <option value="">Select…</option>
-                {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Phone</div>
-              <input value={manual.phone} onChange={e=>setManual({...manual,phone:e.target.value})} placeholder="(678) 555-0101"/>
-            </div>
-            <div style={{gridColumn:"1/-1"}}>
-              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Address</div>
-              <input value={manual.address} onChange={e=>setManual({...manual,address:e.target.value})} placeholder="123 Main St, City GA"/>
-            </div>
-            <div>
-              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>ZIP Code</div>
-              <input value={manual.zip} onChange={e=>setManual({...manual,zip:e.target.value})} placeholder="30542"/>
-            </div>
-            <div>
-              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Source</div>
-              <select value={manual.source} onChange={e=>setManual({...manual,source:e.target.value})}>
-                {SOURCES.map(s=><option key={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Google Rating</div>
-              <input value={manual.rating} onChange={e=>setManual({...manual,rating:e.target.value})} placeholder="4.5" type="number" step="0.1" max="5"/>
-            </div>
-            <div>
-              <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.35)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Review Count</div>
-              <input value={manual.reviews} onChange={e=>setManual({...manual,reviews:e.target.value})} placeholder="87" type="number"/>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={submitManual} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",fontSize:13,fontWeight:700}}>Add to Leads</button>
-            <button onClick={()=>setShowManual(false)} style={{padding:"10px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"rgba(255,255,255,0.4)",fontSize:13}}>Cancel</button>
-          </div>
-        </Box>
-      )}
-
-      {/* ZIP SEARCH */}
-      {showSearch&&!filterMine&&(
-        <Box label="Search for Leads by ZIP" accent="#6366f1">
-          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
-            <input placeholder="ZIP code…" value={searchZip} onChange={e=>setSearchZip(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runSearch()} style={{maxWidth:130}}/>
-            <button onClick={selectAll} style={{padding:"6px 12px",borderRadius:8,border:"1px solid rgba(99,102,241,0.3)",background:"rgba(99,102,241,0.1)",color:"#a5b4fc",fontSize:11,fontWeight:600}}>Select All</button>
-            <button onClick={clearAll} style={{padding:"6px 12px",borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"rgba(255,255,255,0.4)",fontSize:11,fontWeight:600}}>Clear</button>
-            <span style={{fontSize:12,color:"rgba(255,255,255,0.35)"}}>{selectedCats.length} selected</span>
-          </div>
-          {/* Category pills */}
-          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-            {CATEGORIES.map(cat=>{
-              const on=selectedCats.includes(cat);
-              return <button key={cat} onClick={()=>toggleCat(cat)} style={{padding:"5px 12px",borderRadius:20,border:`1px solid ${on?"rgba(99,102,241,0.6)":"rgba(255,255,255,0.1)"}`,background:on?"rgba(99,102,241,0.2)":"rgba(255,255,255,0.04)",color:on?"#a5b4fc":"rgba(255,255,255,0.45)",fontSize:11,fontWeight:on?700:400,transition:"all .15s"}}>{cat}</button>;
-            })}
-          </div>
-          {/* Progress bar while searching */}
-          {searching&&progress.total>0&&(
-            <div style={{marginBottom:10}}>
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",marginBottom:5}}>Searching {progress.done} / {progress.total} categories…</div>
-              <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,0.08)",overflow:"hidden"}}>
-                <div style={{height:"100%",width:`${Math.round((progress.done/progress.total)*100)}%`,background:"linear-gradient(90deg,#6366f1,#8b5cf6)",borderRadius:2,transition:"width .3s"}}/>
-              </div>
-            </div>
-          )}
-          <button onClick={runSearch} disabled={searching} style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:searching?"rgba(99,102,241,0.3)":"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontSize:13,fontWeight:600,marginBottom:10}}>{searching?`Searching ${progress.done}/${progress.total}…`:"Search All Selected"}</button>
-          {searchMsg&&<div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:10}}>{searchMsg}</div>}
-          {searchResults.length>0&&(
-            <>
-              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-                <button onClick={addAll} style={{padding:"7px 16px",borderRadius:8,border:"1px solid rgba(16,185,129,0.35)",background:"rgba(16,185,129,0.12)",color:"#34d399",fontSize:12,fontWeight:600}}>+ Add All {searchResults.length}</button>
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:320,overflowY:"auto"}}>
-                {searchResults.map(r=>(
-                  <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 14px"}}>
-                    <Score lead={r}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{r.businessName}</div>
-                      <div style={{fontSize:11,color:"rgba(255,255,255,0.38)"}}>{r.address}</div>
-                      <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:1}}>⭐ {r.rating} · {r.reviews} reviews · {r.phone}</div>
-                    </div>
-                    <button onClick={()=>addLead(r)} style={{padding:"6px 14px",borderRadius:8,border:"1px solid rgba(99,102,241,0.35)",background:"rgba(99,102,241,0.12)",color:"#a5b4fc",fontSize:12,fontWeight:600,flexShrink:0}}>+ Add</button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </Box>
-      )}
-      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-        <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:170}}/>
+      {/* Filters */}
+      <div style={{padding:"10px 24px",borderBottom:`1px solid ${C.border}`,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",background:C.surf}}>
+        <input placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)} style={{maxWidth:180}}/>
         <input placeholder="ZIP…" value={fZip} onChange={e=>setFZip(e.target.value)} style={{maxWidth:90}}/>
-        <select value={fStatus} onChange={e=>setFStatus(e.target.value)} style={{maxWidth:165}}>
+        <select value={fStatus} onChange={e=>setFStatus(e.target.value)} style={{maxWidth:160}}>
           <option value="all">All Statuses</option>
           {STAGES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
-        <button onClick={()=>setFPriority(!fPriority)} style={{padding:"7px 12px",borderRadius:10,border:`1px solid ${fPriority?"rgba(251,191,36,0.5)":"rgba(255,255,255,0.1)"}`,background:fPriority?"rgba(251,191,36,0.12)":"rgba(255,255,255,0.05)",color:fPriority?"#fbbf24":"rgba(255,255,255,0.4)",fontSize:12,fontWeight:600}}>★ Priority</button>
-        {!filterMine&&<button onClick={()=>{setSelecting(!selecting);setSelected([]);}} style={{padding:"7px 12px",borderRadius:10,border:`1px solid ${selecting?"rgba(244,63,94,0.5)":"rgba(255,255,255,0.1)"}`,background:selecting?"rgba(244,63,94,0.12)":"rgba(255,255,255,0.05)",color:selecting?"#f43f5e":"rgba(255,255,255,0.4)",fontSize:12,fontWeight:600}}>{selecting?"Cancel Select":"☑ Select"}</button>}
+        <button onClick={()=>setFPriority(!fPriority)} style={{padding:"7px 12px",borderRadius:6,border:`1px solid ${fPriority?"rgba(245,158,11,0.5)":C.bStrong}`,background:fPriority?"rgba(245,158,11,0.1)":"transparent",color:fPriority?C.yellow:C.text2,fontSize:12,fontWeight:500}}>★ Priority</button>
       </div>
-      {/* Bulk action bar */}
+
+      {/* Bulk bar */}
       {selecting&&selected.length>0&&(
-        <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",...G,background:"rgba(244,63,94,0.08)",border:"1px solid rgba(244,63,94,0.2)"}}>
-          <span style={{fontSize:13,color:"rgba(255,255,255,0.7)",flex:1}}>{selected.length} lead{selected.length!==1?"s":""} selected</span>
-          <button onClick={()=>{setSelected(filtered.map(l=>l.id));}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,0.15)",background:"transparent",color:"rgba(255,255,255,0.5)",fontSize:12}}>Select All</button>
-          <button onClick={()=>{if(window.confirm(`Remove ${selected.length} lead${selected.length!==1?"s":""}?`)){setLeads(p=>p.filter(l=>!selected.includes(l.id)));setSelected([]);setSelecting(false);}}} style={{padding:"6px 16px",borderRadius:8,border:"none",background:"#f43f5e",color:"#fff",fontSize:12,fontWeight:700}}>🗑 Remove Selected</button>
+        <div style={{padding:"10px 24px",background:"rgba(239,68,68,0.08)",borderBottom:"1px solid rgba(239,68,68,0.2)",display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:13,color:C.text2,flex:1}}>{selected.length} selected</span>
+          <Btn onClick={()=>setSelected(filtered.map(l=>l.id))} variant="ghost" style={{fontSize:11}}>Select All</Btn>
+          <Btn onClick={()=>{if(window.confirm(`Remove ${selected.length} lead${selected.length!==1?"s":""}?`)){setLeads(p=>p.filter(l=>!selected.includes(l.id)));setSelected([]);setSelecting(false);}}} variant="danger">🗑 Remove {selected.length}</Btn>
         </div>
       )}
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        {filtered.length===0&&<div style={{...G,padding:32,textAlign:"center",color:"rgba(255,255,255,0.25)",fontSize:13}}>No leads found.</div>}
+
+      {/* Find Leads Panel */}
+      {showSearch&&(
+        <div style={{padding:20,borderBottom:`1px solid ${C.border}`,background:C.surf}}>
+          <div style={{fontSize:12,fontWeight:600,color:C.text2,marginBottom:12}}>Search by ZIP Code</div>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
+            <input placeholder="ZIP code…" value={searchZip} onChange={e=>setSearchZip(e.target.value)} style={{maxWidth:120}}/>
+            <Btn onClick={()=>setSelectedCats([...CATEGORIES])} variant="ghost" style={{fontSize:11}}>All</Btn>
+            <Btn onClick={()=>setSelectedCats([])} variant="ghost" style={{fontSize:11}}>Clear</Btn>
+            <span style={{fontSize:11,color:C.text3}}>{selectedCats.length} selected</span>
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+            {CATEGORIES.map(cat=>{
+              const on=selectedCats.includes(cat);
+              return <button key={cat} onClick={()=>toggleCat(cat)} style={{padding:"4px 10px",borderRadius:4,border:`1px solid ${on?C.blue:C.bStrong}`,background:on?C.blueDim:"transparent",color:on?C.blue:C.text2,fontSize:11,fontWeight:on?600:400}}>{cat}</button>;
+            })}
+          </div>
+          {searching&&progress.total>0&&(
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,color:C.text3,marginBottom:4}}>Searching {progress.done}/{progress.total} categories…</div>
+              <div style={{height:3,borderRadius:2,background:C.panel}}><div style={{height:"100%",width:`${Math.round((progress.done/progress.total)*100)}%`,background:C.blue,borderRadius:2,transition:"width .3s"}}/></div>
+            </div>
+          )}
+          <Btn onClick={runSearch} disabled={searching} variant="primary" style={{marginBottom:searchMsg?8:0}}>{searching?"Searching…":"Search"}</Btn>
+          {searchMsg&&<div style={{fontSize:12,color:C.text2,marginTop:8}}>{searchMsg}</div>}
+          {searchResults.length>0&&(
+            <div style={{marginTop:12}}>
+              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+                <Btn onClick={addAll} variant="success">+ Add All {searchResults.length}</Btn>
+              </div>
+              <div style={{maxHeight:280,overflowY:"auto",display:"flex",flexDirection:"column",gap:1}}>
+                {searchResults.map(r=>(
+                  <div key={r.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:C.panel,borderRadius:6}}>
+                    <ScoreBadge lead={r}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:500,color:C.text}}>{r.businessName}</div>
+                      <div style={{fontSize:11,color:C.text3}}>{r.address} · ⭐{r.rating} · {r.phone}</div>
+                    </div>
+                    <Btn onClick={()=>addLead(r)} variant="subtle" style={{fontSize:11}}>+ Add</Btn>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Manual Add Panel */}
+      {showManual&&(
+        <div style={{padding:20,borderBottom:`1px solid ${C.border}`,background:C.surf}}>
+          <div style={{fontSize:12,fontWeight:600,color:C.text2,marginBottom:14}}>Add Lead Manually</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+            <Field label="Business Name *" style={{gridColumn:"1/-1"}}>
+              <input value={manual.businessName} onChange={e=>setManual({...manual,businessName:e.target.value})} placeholder="Business name…"/>
+            </Field>
+            <Field label="Category"><select value={manual.category} onChange={e=>setManual({...manual,category:e.target.value})}><option value="">Select…</option>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></Field>
+            <Field label="Phone"><input value={manual.phone} onChange={e=>setManual({...manual,phone:e.target.value})} placeholder="(678) 555-0101"/></Field>
+            <Field label="Address" style={{gridColumn:"1/-1"}}><input value={manual.address} onChange={e=>setManual({...manual,address:e.target.value})} placeholder="123 Main St, City GA"/></Field>
+            <Field label="ZIP"><input value={manual.zip} onChange={e=>setManual({...manual,zip:e.target.value})} placeholder="30542"/></Field>
+            <Field label="Source"><select value={manual.source} onChange={e=>setManual({...manual,source:e.target.value})}>{SOURCES.map(s=><option key={s}>{s}</option>)}</select></Field>
+            <Field label="Rating"><input value={manual.rating} onChange={e=>setManual({...manual,rating:e.target.value})} placeholder="4.5" type="number" step="0.1" max="5"/></Field>
+            <Field label="Reviews"><input value={manual.reviews} onChange={e=>setManual({...manual,reviews:e.target.value})} placeholder="87" type="number"/></Field>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <Btn onClick={submitManual} variant="primary">Add Lead</Btn>
+            <Btn onClick={()=>setShowManual(false)} variant="ghost">Cancel</Btn>
+          </div>
+        </div>
+      )}
+
+      {/* Lead Rows */}
+      <div style={{flex:1,overflowY:"auto"}}>
+        {filtered.length===0&&(
+          <div style={{padding:48,textAlign:"center",color:C.text3,fontSize:13}}>No leads found.</div>
+        )}
         {filtered.map(lead=>(
-          <div key={lead.id} style={{...G,padding:"13px 16px",display:"flex",alignItems:"center",gap:12,background:selected.includes(lead.id)?"rgba(244,63,94,0.08)":"rgba(255,255,255,0.05)",cursor:"pointer",position:"relative",transition:"background .15s",border:selected.includes(lead.id)?"1px solid rgba(244,63,94,0.25)":"1px solid rgba(255,255,255,0.09)"}}
+          <div key={lead.id} style={{
+            display:"flex",alignItems:"center",gap:14,padding:"11px 24px",
+            borderBottom:`1px solid ${C.border}`,cursor:"pointer",
+            background:selected.includes(lead.id)?"rgba(239,68,68,0.05)":"transparent",
+            transition:"background .1s",
+          }}
             onClick={()=>{
               if(selecting){setSelected(p=>p.includes(lead.id)?p.filter(i=>i!==lead.id):[...p,lead.id]);}
               else{setSelLead(lead.id);go("lead-detail");}
             }}
-            onMouseEnter={e=>{if(!selected.includes(lead.id))e.currentTarget.style.background="rgba(255,255,255,0.09)";}}
-            onMouseLeave={e=>{if(!selected.includes(lead.id))e.currentTarget.style.background="rgba(255,255,255,0.05)";}}>
-            {selecting&&<div style={{width:18,height:18,borderRadius:4,border:`2px solid ${selected.includes(lead.id)?"#f43f5e":"rgba(255,255,255,0.2)"}`,background:selected.includes(lead.id)?"#f43f5e":"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{selected.includes(lead.id)&&<span style={{color:"#fff",fontSize:11,fontWeight:700}}>✓</span>}</div>}
-            <Score lead={lead}/>
+            onMouseEnter={e=>{if(!selected.includes(lead.id))e.currentTarget.style.background=C.hover;}}
+            onMouseLeave={e=>{e.currentTarget.style.background=selected.includes(lead.id)?"rgba(239,68,68,0.05)":"transparent";}}>
+            {selecting&&<div style={{width:16,height:16,borderRadius:4,border:`1.5px solid ${selected.includes(lead.id)?C.red:C.bStrong}`,background:selected.includes(lead.id)?C.red:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{selected.includes(lead.id)&&<span style={{color:"#fff",fontSize:9,fontWeight:700}}>✓</span>}</div>}
+            <ScoreBadge lead={lead}/>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                <span style={{fontSize:14,fontWeight:600,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lead.businessName}</span>
-                {lead.priority&&<span style={{color:"#fbbf24",fontSize:13}}>★</span>}
-                <span style={{fontSize:11,color:"rgba(255,255,255,0.32)"}}>{lead.category}</span>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:13,fontWeight:500,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lead.businessName}</span>
+                {lead.priority&&<span style={{color:C.yellow,fontSize:12,lineHeight:1}}>★</span>}
+                <span style={{fontSize:11,color:C.text3}}>{lead.category}</span>
               </div>
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.32)",marginTop:2}}>📮 {lead.zip} · ⭐ {lead.rating} ({lead.reviews} reviews)</div>
+              <div style={{fontSize:11,color:C.text3,marginTop:2}}>📮 {lead.zip||"—"} · ⭐ {lead.rating} ({lead.reviews})</div>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:7,flexShrink:0}}>
-              {!selecting&&lead.assignedTo&&<Avatar uid={lead.assignedTo} size={24}/>}
-              {!selecting&&lead.coWorkers.slice(0,1).map(cw=><Avatar key={cw} uid={cw} size={20}/>)}
-              {!selecting&&<Pill sid={lead.status} sm/>}
-              {!selecting&&<button onClick={e=>{e.stopPropagation();setQMenu(qMenu===lead.id?null:lead.id);}} style={{width:28,height:28,borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.5)",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⋯</button>}
-            </div>
+            {!selecting&&(
+              <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                {lead.assignedTo&&<Av uid={lead.assignedTo} size={22}/>}
+                {lead.coWorkers?.slice(0,1).map(cw=><Av key={cw} uid={cw} size={20}/>)}
+                <StatusPill sid={lead.status} sm/>
+                <button onClick={e=>{e.stopPropagation();setQMenu(qMenu===lead.id?null:lead.id);}} style={{width:26,height:26,borderRadius:5,border:`1px solid ${C.bStrong}`,background:"transparent",color:C.text2,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>⋯</button>
+              </div>
+            )}
             {qMenu===lead.id&&(
-              <div onClick={e=>e.stopPropagation()} style={{position:"absolute",right:12,top:54,zIndex:50,...G,background:"rgba(12,12,28,0.97)",backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",padding:8,minWidth:180,boxShadow:"0 8px 32px rgba(0,0,0,0.5)"}}>
-                <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.28)",letterSpacing:"0.1em",textTransform:"uppercase",padding:"4px 8px 8px"}}>Quick Actions</div>
-                <button onClick={()=>{upd(lead.id,{priority:!lead.priority});setQMenu(null);}} style={{display:"block",width:"100%",padding:"8px 10px",background:"transparent",border:"none",color:"rgba(255,255,255,0.7)",fontSize:12,textAlign:"left",borderRadius:8}}>{lead.priority?"Remove ★ Priority":"★ Mark Priority"}</button>
+              <div onClick={e=>e.stopPropagation()} style={{position:"absolute",right:24,zIndex:50,background:C.panel,border:`1px solid ${C.bStrong}`,borderRadius:8,padding:6,minWidth:170,boxShadow:"0 8px 24px rgba(0,0,0,0.4)",marginTop:4}}>
+                <button onClick={()=>{upd(lead.id,{priority:!lead.priority});setQMenu(null);}} style={{display:"block",width:"100%",padding:"7px 10px",background:"transparent",border:"none",color:C.text2,fontSize:12,textAlign:"left",borderRadius:5}}>{lead.priority?"Remove Priority":"★ Mark Priority"}</button>
+                <div style={{height:1,background:C.border,margin:"4px 0"}}/>
                 {mainStages.slice(0,5).map(s=>(
-                  <button key={s.id} onClick={()=>{upd(lead.id,{status:s.id});setQMenu(null);}} style={{display:"block",width:"100%",padding:"7px 10px",background:lead.status===s.id?"rgba(99,102,241,0.15)":"transparent",border:"none",color:lead.status===s.id?"#a5b4fc":"rgba(255,255,255,0.55)",fontSize:12,textAlign:"left",borderRadius:8}}>→ {s.label}</button>
+                  <button key={s.id} onClick={()=>{upd(lead.id,{status:s.id});setQMenu(null);}} style={{display:"block",width:"100%",padding:"7px 10px",background:lead.status===s.id?C.blueDim:"transparent",border:"none",color:lead.status===s.id?C.blue:C.text2,fontSize:12,textAlign:"left",borderRadius:5}}>→ {s.label}</button>
                 ))}
-                <div style={{height:1,background:"rgba(255,255,255,0.07)",margin:"6px 0"}}/>
-                <button onClick={()=>{if(window.confirm(`Remove ${lead.businessName}?`)){setLeads(p=>p.filter(l=>l.id!==lead.id));setQMenu(null);}}} style={{display:"block",width:"100%",padding:"8px 10px",background:"transparent",border:"none",color:"#f43f5e",fontSize:12,textAlign:"left",borderRadius:8}}>🗑 Remove Lead</button>
-                <button onClick={()=>setQMenu(null)} style={{display:"block",width:"100%",padding:"6px 10px",background:"transparent",border:"none",color:"rgba(255,255,255,0.25)",fontSize:11,textAlign:"left",marginTop:2}}>Close</button>
+                <div style={{height:1,background:C.border,margin:"4px 0"}}/>
+                <button onClick={()=>{if(window.confirm(`Remove ${lead.businessName}?`)){setLeads(p=>p.filter(l=>l.id!==lead.id));setQMenu(null);}}} style={{display:"block",width:"100%",padding:"7px 10px",background:"transparent",border:"none",color:C.red,fontSize:12,textAlign:"left",borderRadius:5}}>🗑 Remove</button>
+                <button onClick={()=>setQMenu(null)} style={{display:"block",width:"100%",padding:"5px 10px",background:"transparent",border:"none",color:C.text3,fontSize:11,textAlign:"left"}}>Close</button>
               </div>
             )}
           </div>
@@ -447,173 +554,285 @@ const LeadsList = ({leads,setLeads,user,go,setSelLead,filterMine}) => {
 // ─── LEAD DETAIL ─────────────────────────────────────────────────────────────
 const LeadDetail = ({leadId,leads,setLeads,user,onBack}) => {
   const lead=leads.find(l=>l.id===leadId);
+  const [tab,setTab]=useState("overview");
   const [noteText,setNoteText]=useState("");
   const [demoInput,setDemoInput]=useState(lead?.demoLink||"");
   const [billing,setBilling]=useState({amount:"",monthly:"",billingName:"",billingEmail:"",paymentLink:"",status:"unpaid",...(lead?.payment||{})});
   const [oForm,setOForm]=useState({date:today(),method:"",outcome:"",by:user.id});
   const [showOForm,setShowOForm]=useState(false);
-  useEffect(()=>{if(lead){setDemoInput(lead.demoLink||"");setBilling({amount:"",monthly:"",billingName:"",billingEmail:"",paymentLink:"",status:"unpaid",...(lead.payment||{})});}}, [leadId]);
+  const [calling,setCalling]=useState(false); const [callMsg,setCallMsg]=useState("");
+  const [insight,setInsight]=useState(""); const [loadingInsight,setLoadingInsight]=useState(false); const [insightErr,setInsightErr]=useState("");
+
+  useEffect(()=>{if(lead){setDemoInput(lead.demoLink||"");setBilling({amount:"",monthly:"",billingName:"",billingEmail:"",paymentLink:"",status:"unpaid",...(lead.payment||{})});}setTab("overview");},[leadId]);
+
   if(!lead) return null;
-  const upd=(u)=>setLeads(p=>p.map(l=>l.id===leadId?{...l,...u}:l));
-  const isAssigned=lead.assignedTo===user.id; const isCoWorker=lead.coWorkers.includes(user.id);
-  const addNote=()=>{if(!noteText.trim())return;upd({notes:[...lead.notes,{id:Date.now(),author:user.id,text:noteText.trim(),ts:ts()}]});setNoteText("");};
-  const addOutreach=()=>{if(!oForm.method||!oForm.outcome)return;upd({outreachLog:[...lead.outreachLog,{id:Date.now(),...oForm}]});setShowOForm(false);setOForm({date:today(),method:"",outcome:"",by:user.id});};
+
+  const upd=u=>setLeads(p=>p.map(l=>l.id===leadId?{...l,...u}:l));
+  const addNote=()=>{if(!noteText.trim())return;upd({notes:[...(lead.notes||[]),{id:Date.now(),author:user.id,text:noteText.trim(),ts:ts()}]});setNoteText("");};
+  const addOutreach=()=>{if(!oForm.method||!oForm.outcome)return;upd({outreachLog:[...(lead.outreachLog||[]),{id:Date.now(),...oForm}]});setShowOForm(false);setOForm({date:today(),method:"",outcome:"",by:user.id});};
   const saveBilling=()=>upd({payment:{...billing}});
-  const claimLead=()=>upd({status:"under-review",claimedBy:user.id,claimedAt:ts(),assignedTo:lead.assignedTo||user.id,notes:[...lead.notes,{id:Date.now(),author:user.id,text:`Lead claimed by ${user.name}.`,ts:ts()}]});
+
+  const makeCall=async()=>{
+    if(!window.confirm(`AI call to ${lead.businessName} at ${lead.phone}?`))return;
+    setCalling(true);setCallMsg("");
+    try{
+      const r=await fetch("/.netlify/functions/make-call",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(lead)});
+      const d=await r.json();
+      if(d.error)setCallMsg(`Error: ${d.error}`);
+      else{setCallMsg(`✓ Call fired`);upd({outreachLog:[...(lead.outreachLog||[]),{id:Date.now(),date:today(),method:"AI Call",outcome:"In Progress",by:user.id,callId:d.callId}]});}
+    }catch(e){setCallMsg("Failed.");}
+    setCalling(false);
+  };
+
+  const generateInsight=async()=>{
+    setLoadingInsight(true);setInsightErr("");setInsight("");
+    try{
+      const r=await fetch("/.netlify/functions/generate-insights",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(lead)});
+      const d=await r.json();
+      if(d.error)setInsightErr(d.error);
+      else setInsight(d.insight);
+    }catch(e){setInsightErr("Failed.");}
+    setLoadingInsight(false);
+  };
+
+  const isAssigned=lead.assignedTo===user.id; const isCoWorker=lead.coWorkers?.includes(user.id);
+  const idx=mainStages.findIndex(s=>s.id===lead.status);
+
+  const TABS=["overview","outreach","billing","notes"];
+
   return (
-    <div className="si" style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div style={{display:"flex",alignItems:"flex-start",gap:12,paddingTop:4}}>
-        <button onClick={onBack} style={{padding:"7px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.06)",color:"rgba(255,255,255,0.6)",fontSize:12,flexShrink:0}}>← Back</button>
-        <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <span style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>{lead.businessName}</span>
-            <button onClick={()=>upd({priority:!lead.priority})} style={{background:"none",border:"none",fontSize:16,color:lead.priority?"#fbbf24":"rgba(255,255,255,0.2)",padding:"0 2px"}}>★</button>
-            <Pill sid={lead.status}/>
-          </div>
-          <div style={{fontSize:12,color:"rgba(255,255,255,0.38)",marginTop:3}}>{lead.category} · {lead.zip}{lead.source?` · Source: ${lead.source}`:""}</div>
-        </div>
-        <Score lead={lead}/>
-        <button onClick={()=>{if(window.confirm(`Remove ${lead.businessName}?`)){setLeads(p=>p.filter(l=>l.id!==leadId));onBack();}}} style={{padding:"7px 12px",borderRadius:10,border:"1px solid rgba(244,63,94,0.3)",background:"rgba(244,63,94,0.1)",color:"#f43f5e",fontSize:12,fontWeight:600,flexShrink:0}}>🗑 Remove</button>
-      </div>
-
-      {/* Pipeline */}
-      <Box label="Pipeline Status">
-        <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:8}}>
-          {mainStages.map((s,i)=>{const isA=lead.status===s.id;const idx=mainStages.findIndex(x=>x.id===lead.status);const isPast=idx>i&&!isA;return(<button key={s.id} onClick={()=>upd({status:s.id})} style={{padding:"6px 11px",borderRadius:20,border:`1px solid ${s.color}${isA?"bb":"30"}`,background:isA?s.bg:isPast?`${s.color}0d`:"rgba(255,255,255,0.04)",color:isA?s.color:isPast?`${s.color}60`:"rgba(255,255,255,0.35)",fontSize:10,fontWeight:isA?700:400,transition:"all .15s"}}>{isPast?"✓ ":""}{s.label}</button>);})}
-        </div>
-        <div style={{display:"flex",gap:5,paddingTop:8,borderTop:"1px solid rgba(255,255,255,0.07)"}}>
-          {declineStages.map(s=>(<button key={s.id} onClick={()=>upd({status:s.id})} style={{padding:"5px 11px",borderRadius:20,border:`1px solid ${s.color}${lead.status===s.id?"aa":"25"}`,background:lead.status===s.id?s.bg:"rgba(255,255,255,0.03)",color:lead.status===s.id?s.color:"rgba(255,255,255,0.28)",fontSize:10,fontWeight:lead.status===s.id?700:400,transition:"all .15s"}}>{s.label}</button>))}
-        </div>
-      </Box>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-        <Box label="Business Info">
-          {[["📍",lead.address],["📞",lead.phone],["⭐",`${lead.rating} · ${lead.reviews} reviews`],["📮","ZIP: "+lead.zip]].map(([i,v])=>(<div key={v} style={{display:"flex",gap:8,marginBottom:9}}><span style={{flexShrink:0,width:18,fontSize:13}}>{i}</span><span style={{fontSize:12,color:"rgba(255,255,255,0.72)",lineHeight:1.4}}>{v}</span></div>))}
-        </Box>
-        <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          <Box label="Assignment" style={{flex:1}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-              {lead.assignedTo?<Avatar uid={lead.assignedTo} size={28}/>:<div style={{width:28,height:28,borderRadius:"50%",border:"2px dashed rgba(255,255,255,0.18)"}}/>}
-              <span style={{fontSize:12,color:"rgba(255,255,255,0.65)"}}>{lead.assignedTo?ACCOUNTS[lead.assignedTo]?.name:"Nobody"}</span>
-              {lead.coWorkers.map(cw=><Avatar key={cw} uid={cw} size={20}/>)}
+    <div className="anim" style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      {/* Header */}
+      <div style={{padding:"14px 24px",borderBottom:`1px solid ${C.border}`,background:C.surf}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+          <button onClick={onBack} style={{padding:"5px 12px",borderRadius:6,border:`1px solid ${C.bStrong}`,background:"transparent",color:C.text2,fontSize:12}}>← Back</button>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+              <span style={{fontSize:17,fontWeight:700,color:C.text}}>{lead.businessName}</span>
+              <button onClick={()=>upd({priority:!lead.priority})} style={{background:"none",border:"none",fontSize:14,color:lead.priority?C.yellow:C.text3,padding:0,lineHeight:1}}>★</button>
+              <StatusPill sid={lead.status}/>
             </div>
-            {lead.claimedBy&&<div style={{fontSize:10,color:"rgba(255,255,255,0.28)",marginBottom:8}}>Claimed by {ACCOUNTS[lead.claimedBy]?.name} · {lead.claimedAt}</div>}
-            {lead.status==="new"&&!lead.claimedBy&&<button onClick={claimLead} style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(16,185,129,0.35)",background:"rgba(16,185,129,0.12)",color:"#34d399",fontSize:12,fontWeight:700,marginBottom:6}}>✋ Claim Lead</button>}
-            {!isAssigned&&!isCoWorker&&lead.status!=="new"&&<button onClick={()=>upd(lead.assignedTo?{coWorkers:[...lead.coWorkers,user.id]}:{assignedTo:user.id})} style={{width:"100%",padding:"7px",borderRadius:8,border:"1px solid rgba(99,102,241,0.3)",background:"rgba(99,102,241,0.1)",color:"#a5b4fc",fontSize:12,fontWeight:600}}>{lead.assignedTo?"Join as Co-worker":"Take Ownership"}</button>}
-            {lead.coWorkers.length>0&&isAssigned&&<div style={{fontSize:10,color:"rgba(245,158,11,0.7)",marginTop:6,display:"flex",alignItems:"center",gap:5}}><span style={{width:5,height:5,borderRadius:"50%",background:"#f59e0b",display:"inline-block",animation:"pulse 2s infinite"}}/>Co-working with {lead.coWorkers.map(c=>ACCOUNTS[c]?.name).join(", ")}</div>}
-          </Box>
-          <Box label="Demo Site" style={{flex:1}}>
-            <input value={demoInput} onChange={e=>setDemoInput(e.target.value)} placeholder="Paste demo URL…" style={{marginBottom:8}}/>
-            <button onClick={()=>upd({demoLink:demoInput})} style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(6,182,212,0.3)",background:"rgba(6,182,212,0.1)",color:"#67e8f9",fontSize:12,fontWeight:600}}>Save</button>
-            {lead.demoLink&&<a href={lead.demoLink} target="_blank" style={{display:"block",marginTop:8,fontSize:11,color:"#67e8f9",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🔗 {lead.demoLink}</a>}
-          </Box>
+            <div style={{fontSize:12,color:C.text3,marginTop:2}}>{lead.category} · {lead.zip}{lead.source?` · ${lead.source}`:""}</div>
+          </div>
+          <ScoreBadge lead={lead}/>
+          <Btn onClick={()=>{if(window.confirm(`Remove ${lead.businessName}?`)){setLeads(p=>p.filter(l=>l.id!==leadId));onBack();}}} variant="danger" style={{fontSize:11}}>Remove</Btn>
+        </div>
+        {/* Pipeline bar */}
+        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
+          {mainStages.map((s,i)=>{
+            const isA=lead.status===s.id; const isPast=idx>i&&!isA;
+            return <button key={s.id} onClick={()=>upd({status:s.id})} style={{padding:"4px 10px",borderRadius:4,border:`1px solid ${isA?s.color+"90":isPast?s.color+"30":C.bStrong}`,background:isA?`${s.color}18`:isPast?`${s.color}08`:"transparent",color:isA?s.color:isPast?`${s.color}60`:C.text3,fontSize:10,fontWeight:isA?700:400,transition:"all .1s"}}>{isPast?"✓ ":""}{s.label}</button>;
+          })}
+        </div>
+        <div style={{display:"flex",gap:4}}>
+          {declineStages.map(s=><button key={s.id} onClick={()=>upd({status:s.id})} style={{padding:"3px 10px",borderRadius:4,border:`1px solid ${lead.status===s.id?s.color+"90":C.bStrong}`,background:lead.status===s.id?`${s.color}18`:"transparent",color:lead.status===s.id?s.color:C.text3,fontSize:10,fontWeight:lead.status===s.id?700:400}}>{s.label}</button>)}
         </div>
       </div>
 
-      {/* Billing */}
-      <Box label="Billing & Payment" accent="#10b981">
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
-          {Object.entries(PAY_COLORS).map(([s,c])=>(<button key={s} onClick={()=>setBilling({...billing,status:s})} style={{padding:"4px 12px",borderRadius:20,border:`1px solid ${c}${billing.status===s?"bb":"30"}`,background:billing.status===s?`${c}20`:"transparent",color:billing.status===s?c:`${c}55`,fontSize:10,fontWeight:700,textTransform:"capitalize"}}>{s}</button>))}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-          <div><div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.32)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Build Fee</div><div style={{position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:"rgba(255,255,255,0.4)",fontWeight:600}}>$</span><input value={billing.amount} onChange={e=>setBilling({...billing,amount:e.target.value})} placeholder="0" type="number" style={{paddingLeft:22,fontSize:15,fontWeight:700}}/></div></div>
-          <div><div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.32)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Monthly Recurring</div><div style={{position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:"rgba(255,255,255,0.4)",fontWeight:600}}>$</span><input value={billing.monthly} onChange={e=>setBilling({...billing,monthly:e.target.value})} placeholder="0" type="number" style={{paddingLeft:22,fontSize:15,fontWeight:700}}/></div>{billing.monthly&&<div style={{fontSize:10,color:"rgba(255,255,255,0.28)",marginTop:4}}>${(parseFloat(billing.monthly)*12||0).toFixed(0)}/yr</div>}</div>
-          <div><div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.32)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Billing Name</div><input value={billing.billingName} onChange={e=>setBilling({...billing,billingName:e.target.value})} placeholder="Client name…"/></div>
-          <div><div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.32)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Billing Email</div><input value={billing.billingEmail} onChange={e=>setBilling({...billing,billingEmail:e.target.value})} placeholder="email@client.com" type="email"/></div>
-        </div>
-        <div style={{marginBottom:12}}><div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.32)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5}}>Payment Link</div><input value={billing.paymentLink} onChange={e=>setBilling({...billing,paymentLink:e.target.value})} placeholder="Square / Cash App / Venmo link…"/>{billing.paymentLink&&<a href={billing.paymentLink} target="_blank" style={{display:"block",marginTop:5,fontSize:11,color:"#34d399",textDecoration:"none"}}>🔗 Open payment link</a>}</div>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingTop:12,borderTop:"1px solid rgba(255,255,255,0.07)"}}>
-          <div style={{display:"flex",gap:18}}>
-            {billing.amount&&<div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>Build</div><div style={{fontSize:18,fontWeight:700,color:"#34d399"}}>${billing.amount}</div></div>}
-            {billing.monthly&&<div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>Monthly</div><div style={{fontSize:18,fontWeight:700,color:"#fbbf24"}}>${billing.monthly}/mo</div></div>}
-            <div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>Status</div><div style={{fontSize:12,fontWeight:700,color:PAY_COLORS[billing.status]||"#fff",marginTop:4,textTransform:"capitalize"}}>{billing.status}</div></div>
+      {/* Tabs */}
+      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,background:C.surf,paddingLeft:24}}>
+        {TABS.map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={{
+            padding:"10px 18px",border:"none",background:"transparent",
+            fontSize:13,fontWeight:tab===t?600:400,
+            color:tab===t?C.text:C.text2,
+            borderBottom:tab===t?`2px solid ${C.blue}`:"2px solid transparent",
+            marginBottom:-1,transition:"all .1s",textTransform:"capitalize",
+          }}>{t}</button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div style={{flex:1,overflowY:"auto",padding:24}}>
+
+        {/* OVERVIEW */}
+        {tab==="overview"&&(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+            {/* Business Info */}
+            <Card>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>Business Info</div>
+              {[["📍","Address",lead.address||"—"],["📞","Phone",lead.phone||"—"],["⭐","Rating",`${lead.rating} stars · ${lead.reviews} reviews`],["📮","ZIP",lead.zip||"—"]].map(([i,l,v])=>(
+                <div key={l} style={{display:"flex",gap:10,marginBottom:10}}>
+                  <span style={{fontSize:13,width:18,flexShrink:0}}>{i}</span>
+                  <div><div style={{fontSize:10,fontWeight:600,color:C.text3,marginBottom:2}}>{l}</div><div style={{fontSize:13,color:C.text2}}>{v}</div></div>
+                </div>
+              ))}
+            </Card>
+
+            {/* Assignment */}
+            <Card>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>Assignment</div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                {lead.assignedTo?<Av uid={lead.assignedTo} size={28}/>:<div style={{width:28,height:28,borderRadius:"50%",border:`1.5px dashed ${C.bStrong}`}}/>}
+                <span style={{fontSize:13,color:C.text2}}>{lead.assignedTo?ACCOUNTS[lead.assignedTo]?.name:"Unassigned"}</span>
+                {lead.coWorkers?.map(cw=><Av key={cw} uid={cw} size={22}/>)}
+              </div>
+              {lead.claimedBy&&<div style={{fontSize:11,color:C.text3,marginBottom:8}}>Claimed by {ACCOUNTS[lead.claimedBy]?.name} · {lead.claimedAt}</div>}
+              {lead.status==="new"&&!lead.claimedBy&&(
+                <Btn onClick={()=>upd({status:"under-review",claimedBy:user.id,claimedAt:ts(),assignedTo:lead.assignedTo||user.id,notes:[...(lead.notes||[]),{id:Date.now(),author:user.id,text:`Lead claimed by ${user.name}.`,ts:ts()}]})} variant="success" style={{width:"100%",marginBottom:8}}>✋ Claim Lead</Btn>
+              )}
+              {!isAssigned&&!isCoWorker&&lead.status!=="new"&&(
+                <Btn onClick={()=>upd(lead.assignedTo?{coWorkers:[...(lead.coWorkers||[]),user.id]}:{assignedTo:user.id})} variant="subtle" style={{width:"100%"}}>{lead.assignedTo?"Join as Co-worker":"Take Ownership"}</Btn>
+              )}
+            </Card>
+
+            {/* Demo Link */}
+            <Card>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>Demo Site</div>
+              <div style={{display:"flex",gap:8,marginBottom:lead.demoLink?8:0}}>
+                <input value={demoInput} onChange={e=>setDemoInput(e.target.value)} placeholder="Paste demo URL…"/>
+                <Btn onClick={()=>upd({demoLink:demoInput})} variant="primary" style={{flexShrink:0}}>Save</Btn>
+              </div>
+              {lead.demoLink&&<a href={lead.demoLink} target="_blank" style={{fontSize:12,color:C.blue,textDecoration:"none",display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🔗 {lead.demoLink}</a>}
+            </Card>
+
+            {/* AI Insights */}
+            <Card>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>AI Insights</div>
+              {insight&&<div style={{fontSize:12,color:C.text2,lineHeight:1.7,whiteSpace:"pre-wrap",marginBottom:12}}>{insight}</div>}
+              {insightErr&&<div style={{fontSize:12,color:C.red,marginBottom:8}}>{insightErr}</div>}
+              <Btn onClick={generateInsight} disabled={loadingInsight} variant={insight?"ghost":"primary"}>{loadingInsight?"Generating…":insight?"Regenerate":"Generate Insights"}</Btn>
+            </Card>
           </div>
-          <button onClick={saveBilling} style={{padding:"9px 20px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",fontSize:13,fontWeight:700}}>Save Billing</button>
-        </div>
-      </Box>
+        )}
 
-      {/* Outreach Log */}
-      <Box label="Outreach Log" accent="#f97316">
-        {/* AI Call button */}
-        {(() => {
-          const [calling,setCalling]=useState(false);
-          const [callMsg,setCallMsg]=useState("");
-          const makeCall=async()=>{
-            if(!window.confirm(`Fire an AI call to ${lead.businessName} at ${lead.phone}?`))return;
-            setCalling(true);setCallMsg("");
-            try{
-              const res=await fetch("/.netlify/functions/make-call",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(lead)});
-              const data=await res.json();
-              if(data.error){setCallMsg(`Error: ${data.error}`);}
-              else{
-                setCallMsg(`✓ Call initiated`);
-                upd({outreachLog:[...lead.outreachLog,{id:Date.now(),date:today(),method:"AI Call",outcome:"In Progress",by:user.id,callId:data.callId}]});
-              }
-            }catch(e){setCallMsg("Failed. Check Bland AI key in Netlify.");}
-            setCalling(false);
-          };
-          return(
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
-              <button onClick={makeCall} disabled={calling||!lead.phone||lead.phone==="Not listed"} style={{padding:"9px 20px",borderRadius:9,border:"none",background:calling?"rgba(249,115,22,0.3)":"linear-gradient(135deg,#f97316,#ea580c)",color:"#fff",fontSize:13,fontWeight:700,opacity:(!lead.phone||lead.phone==="Not listed")?0.4:1}}>{calling?"📞 Calling…":"📞 AI Call"}</button>
-              {lead.phone&&lead.phone!=="Not listed"&&<span style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>{lead.phone}</span>}
-              {callMsg&&<span style={{fontSize:11,color:callMsg.startsWith("Error")||callMsg.startsWith("Failed")?"#f43f5e":"#34d399"}}>{callMsg}</span>}
-            </div>
-          );
-        })()}
-        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
-          {lead.outreachLog.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.25)",fontStyle:"italic"}}>No outreach logged yet.</div>}
-          {lead.outreachLog.map(o=>(<div key={o.id} style={{display:"flex",gap:10,alignItems:"center",background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"9px 12px"}}><Avatar uid={o.by} size={24}/><div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,color:"#fff"}}>{o.method} <span style={{color:"rgba(255,255,255,0.4)",fontWeight:400}}>→</span> {o.outcome}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>{o.date} · {ACCOUNTS[o.by]?.name}</div></div></div>))}
-        </div>
-        {showOForm?(
-          <div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:12,display:"flex",flexDirection:"column",gap:8}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              <select value={oForm.method} onChange={e=>setOForm({...oForm,method:e.target.value})}><option value="">Method…</option>{METHODS.map(m=><option key={m}>{m}</option>)}</select>
-              <select value={oForm.outcome} onChange={e=>setOForm({...oForm,outcome:e.target.value})}><option value="">Outcome…</option>{OUTCOMES.map(o=><option key={o}>{o}</option>)}</select>
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={addOutreach} style={{flex:1,padding:"8px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#f97316,#ea580c)",color:"#fff",fontSize:12,fontWeight:600}}>Log Attempt</button>
-              <button onClick={()=>setShowOForm(false)} style={{padding:"8px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"rgba(255,255,255,0.4)",fontSize:12}}>Cancel</button>
-            </div>
+        {/* OUTREACH */}
+        {tab==="outreach"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            {/* Call Action */}
+            <Card>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>AI Phone Call</div>
+              <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                <Btn onClick={makeCall} disabled={calling||!lead.phone||lead.phone==="Not listed"} variant="primary" style={{fontSize:13,fontWeight:600}}>📞 {calling?"Calling…":"Fire AI Call"}</Btn>
+                {lead.phone&&lead.phone!=="Not listed"&&<span style={{fontSize:12,color:C.text3}}>{lead.phone}</span>}
+                {callMsg&&<span style={{fontSize:12,color:callMsg.startsWith("Error")||callMsg.startsWith("Failed")?C.red:C.green}}>{callMsg}</span>}
+              </div>
+            </Card>
+            {/* Log */}
+            <Card>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>Outreach Log</div>
+              <div style={{display:"flex",flexDirection:"column",gap:1,marginBottom:14}}>
+                {(!lead.outreachLog||lead.outreachLog.length===0)&&<div style={{fontSize:12,color:C.text3,fontStyle:"italic",padding:"8px 0"}}>No outreach logged yet.</div>}
+                {(lead.outreachLog||[]).map(o=>(
+                  <div key={o.id} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+                    <Av uid={o.by} size={24}/>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,color:C.text}}>{o.method} <span style={{color:C.text3}}>→</span> {o.outcome}</div>
+                      <div style={{fontSize:11,color:C.text3}}>{o.date} · {ACCOUNTS[o.by]?.name}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {showOForm?(
+                <div style={{display:"flex",flexDirection:"column",gap:8,padding:14,background:C.panel,borderRadius:6}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    <select value={oForm.method} onChange={e=>setOForm({...oForm,method:e.target.value})}><option value="">Method…</option>{METHODS.map(m=><option key={m}>{m}</option>)}</select>
+                    <select value={oForm.outcome} onChange={e=>setOForm({...oForm,outcome:e.target.value})}><option value="">Outcome…</option>{OUTCOMES.map(o=><option key={o}>{o}</option>)}</select>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <Btn onClick={addOutreach} variant="primary">Log</Btn>
+                    <Btn onClick={()=>setShowOForm(false)} variant="ghost">Cancel</Btn>
+                  </div>
+                </div>
+              ):<Btn onClick={()=>setShowOForm(true)} variant="subtle">+ Log Attempt</Btn>}
+            </Card>
           </div>
-        ):(<button onClick={()=>setShowOForm(true)} style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(249,115,22,0.3)",background:"rgba(249,115,22,0.08)",color:"rgba(249,115,22,0.8)",fontSize:12,fontWeight:600}}>+ Log Outreach Attempt</button>)}
-      </Box>
+        )}
 
-      {/* Notes */}
-      <Box label="Notes">
-        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12,maxHeight:220,overflowY:"auto"}}>
-          {lead.notes.length===0&&<div style={{fontSize:12,color:"rgba(255,255,255,0.25)",fontStyle:"italic"}}>No notes yet.</div>}
-          {lead.notes.map(n=>(<div key={n.id} style={{display:"flex",gap:10,background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 12px"}}><Avatar uid={n.author} size={26}/><div><div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:3}}><span style={{fontSize:12,fontWeight:600,color:"#fff"}}>{ACCOUNTS[n.author]?.name}</span><span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>{n.ts}</span></div><div style={{fontSize:13,color:"rgba(255,255,255,0.75)",lineHeight:1.5}}>{n.text}</div></div></div>))}
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <textarea placeholder={`Add a note as ${user.name}…`} value={noteText} onChange={e=>setNoteText(e.target.value)} rows={2} style={{flex:1,resize:"none"}} onKeyDown={e=>{if(e.key==="Enter"&&e.metaKey)addNote();}}/>
-          <button onClick={addNote} style={{padding:"0 16px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontWeight:600,fontSize:13}}>Post</button>
-        </div>
-        <div style={{fontSize:10,color:"rgba(255,255,255,0.18)",marginTop:5}}>⌘ + Enter to post</div>
-      </Box>
+        {/* BILLING */}
+        {tab==="billing"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            {/* Status */}
+            <Card>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>Payment Status</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {Object.entries(PAY_STATUS).map(([s,c])=>(
+                  <button key={s} onClick={()=>setBilling({...billing,status:s})} style={{
+                    padding:"6px 16px",borderRadius:6,
+                    border:`1px solid ${billing.status===s?c+"90":C.bStrong}`,
+                    background:billing.status===s?`${c}15`:"transparent",
+                    color:billing.status===s?c:C.text2,
+                    fontSize:12,fontWeight:billing.status===s?700:400,
+                    textTransform:"capitalize",
+                  }}>{s}</button>
+                ))}
+              </div>
+            </Card>
 
-      {/* AI Insights */}
-      <Box label="AI Insights" accent="#6366f1">
-        {(() => {
-          const [insight,setInsight]=useState(""); const [loading,setLoading]=useState(false); const [err,setErr]=useState("");
-          const generate=async()=>{
-            setLoading(true); setErr(""); setInsight("");
-            try{
-              const res=await fetch("/.netlify/functions/generate-insights",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({businessName:lead.businessName,category:lead.category,address:lead.address,phone:lead.phone,rating:lead.rating,reviews:lead.reviews,status:lead.status,notes:lead.notes.map(n=>n.text).join(" | ")})});
-              const data=await res.json();
-              if(data.error)setErr(data.error);
-              else setInsight(data.insight);
-            }catch(e){setErr("Failed to generate. Check Anthropic API key in Netlify.");}
-            setLoading(false);
-          };
-          return(
-            <>
-              {insight&&<div style={{fontSize:13,color:"rgba(255,255,255,0.8)",lineHeight:1.7,marginBottom:14,whiteSpace:"pre-wrap"}}>{insight}</div>}
-              {err&&<div style={{fontSize:12,color:"#f43f5e",marginBottom:10}}>{err}</div>}
-              <button onClick={generate} disabled={loading} style={{padding:"9px 20px",borderRadius:10,border:"none",background:loading?"rgba(99,102,241,0.3)":"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",fontSize:13,fontWeight:600}}>{loading?"Generating…":"Generate Insights"}</button>
-            </>
-          );
-        })()}
-      </Box>
+            {/* Fees */}
+            <Card>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:14}}>Fees</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+                <Field label="Build Fee (one-time)">
+                  <div style={{position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.text3,fontWeight:600}}>$</span><input value={billing.amount} onChange={e=>setBilling({...billing,amount:e.target.value})} placeholder="0" type="number" style={{paddingLeft:22,fontSize:18,fontWeight:700}}/></div>
+                </Field>
+                <Field label="Monthly Recurring">
+                  <div style={{position:"relative"}}><span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",color:C.text3,fontWeight:600}}>$</span><input value={billing.monthly} onChange={e=>setBilling({...billing,monthly:e.target.value})} placeholder="0" type="number" style={{paddingLeft:22,fontSize:18,fontWeight:700}}/></div>
+                  {billing.monthly&&<div style={{fontSize:11,color:C.text3,marginTop:4}}>${(parseFloat(billing.monthly)*12||0).toFixed(0)}/yr</div>}
+                </Field>
+              </div>
+              {/* Summary */}
+              {(billing.amount||billing.monthly)&&(
+                <div style={{display:"flex",gap:24,padding:14,background:C.panel,borderRadius:6,marginBottom:14}}>
+                  {billing.amount&&<div><div style={{fontSize:10,color:C.text3,marginBottom:2}}>Build</div><div style={{fontSize:20,fontWeight:700,color:C.green}}>${billing.amount}</div></div>}
+                  {billing.monthly&&<div><div style={{fontSize:10,color:C.text3,marginBottom:2}}>Monthly</div><div style={{fontSize:20,fontWeight:700,color:C.yellow}}>${billing.monthly}/mo</div></div>}
+                  <div><div style={{fontSize:10,color:C.text3,marginBottom:2}}>Status</div><div style={{fontSize:13,fontWeight:700,color:PAY_STATUS[billing.status]||C.text,marginTop:3,textTransform:"capitalize"}}>{billing.status}</div></div>
+                </div>
+              )}
+            </Card>
+
+            {/* Contact */}
+            <Card>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:14}}>Billing Contact</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+                <Field label="Name"><input value={billing.billingName} onChange={e=>setBilling({...billing,billingName:e.target.value})} placeholder="Client name…"/></Field>
+                <Field label="Email"><input value={billing.billingEmail} onChange={e=>setBilling({...billing,billingEmail:e.target.value})} placeholder="email@client.com" type="email"/></Field>
+              </div>
+              <Field label="Payment Link">
+                <input value={billing.paymentLink} onChange={e=>setBilling({...billing,paymentLink:e.target.value})} placeholder="Square / Cash App / Venmo link…"/>
+              </Field>
+              {billing.paymentLink&&<a href={billing.paymentLink} target="_blank" style={{fontSize:12,color:C.green,textDecoration:"none",display:"block",marginTop:6}}>🔗 Open link</a>}
+            </Card>
+
+            <Btn onClick={saveBilling} variant="success" style={{alignSelf:"flex-start",padding:"9px 24px",fontSize:13,fontWeight:600}}>Save Billing</Btn>
+          </div>
+        )}
+
+        {/* NOTES */}
+        {tab==="notes"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {/* Composer */}
+            <Card>
+              <div style={{display:"flex",gap:10}}>
+                <Av uid={user.id} size={28}/>
+                <div style={{flex:1}}>
+                  <textarea placeholder={`Add a note as ${user.name}…`} value={noteText} onChange={e=>setNoteText(e.target.value)} rows={3} style={{resize:"none",marginBottom:8}} onKeyDown={e=>{if(e.key==="Enter"&&e.metaKey)addNote();}}/>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:11,color:C.text3}}>⌘ + Enter to post</span>
+                    <Btn onClick={addNote} disabled={!noteText.trim()} variant="primary">Post Note</Btn>
+                  </div>
+                </div>
+              </div>
+            </Card>
+            {/* Notes list */}
+            {(!lead.notes||lead.notes.length===0)&&<div style={{fontSize:13,color:C.text3,fontStyle:"italic",padding:8}}>No notes yet.</div>}
+            {[...(lead.notes||[])].reverse().map(n=>(
+              <Card key={n.id}>
+                <div style={{display:"flex",gap:10}}>
+                  <Av uid={n.author} size={26}/>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:6}}>
+                      <span style={{fontSize:13,fontWeight:600,color:C.text}}>{ACCOUNTS[n.author]?.name}</span>
+                      <span style={{fontSize:11,color:C.text3}}>{n.ts}</span>
+                    </div>
+                    <div style={{fontSize:13,color:C.text2,lineHeight:1.6}}>{n.text}</div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -623,25 +842,35 @@ const ClientRoster = ({leads,go,setSelLead}) => {
   const clients=leads.filter(l=>l.status==="closed-won");
   const mrr=clients.reduce((a,l)=>a+(parseFloat(l.payment?.monthly)||0),0);
   return (
-    <div className="fu" style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div style={{paddingTop:4}}><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>Client Roster</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:2}}>{clients.length} active client{clients.length!==1?"s":""} · ${mrr}/mo recurring</div></div>
-      {clients.length===0&&<div style={{...G,padding:36,textAlign:"center",color:"rgba(255,255,255,0.25)",fontSize:13}}>No signed clients yet. Keep pushing.</div>}
-      {clients.map(c=>(
-        <button key={c.id} onClick={()=>{setSelLead(c.id);go("lead-detail");}} style={{...G,padding:"16px 18px",textAlign:"left",display:"flex",alignItems:"center",gap:14,background:"rgba(16,185,129,0.05)",border:"1px solid rgba(16,185,129,0.15)",cursor:"pointer"}}>
-          <div style={{width:40,height:40,borderRadius:10,background:"rgba(16,185,129,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🏢</div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:14,fontWeight:600,color:"#fff"}}>{c.businessName}</div>
-            <div style={{fontSize:11,color:"rgba(255,255,255,0.38)",marginTop:2}}>{c.category} · {c.address}</div>
-            {c.demoLink&&<div style={{fontSize:11,color:"#67e8f9",marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🔗 {c.demoLink}</div>}
-            {c.payment?.billingName&&<div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:2}}>Contact: {c.payment.billingName}{c.payment.billingEmail?` · ${c.payment.billingEmail}`:""}</div>}
-          </div>
-          <div style={{textAlign:"right",flexShrink:0}}>
-            {c.payment?.amount&&<div style={{fontSize:16,fontWeight:700,color:"#34d399"}}>${c.payment.amount}</div>}
-            {c.payment?.monthly&&<div style={{fontSize:12,color:"#fbbf24",marginTop:2}}>${c.payment.monthly}/mo</div>}
-            <div style={{marginTop:5}}><span style={{fontSize:10,color:PAY_COLORS[c.payment?.status]||"#fff",background:`${PAY_COLORS[c.payment?.status]||"#fff"}18`,padding:"2px 8px",borderRadius:10,fontWeight:600,textTransform:"capitalize"}}>{c.payment?.status||"unpaid"}</span></div>
-          </div>
-        </button>
-      ))}
+    <div className="anim" style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      <div style={{padding:"16px 24px",borderBottom:`1px solid ${C.border}`,background:C.surf}}>
+        <div style={{fontSize:16,fontWeight:700,color:C.text}}>Client Roster</div>
+        <div style={{fontSize:12,color:C.text3,marginTop:1}}>{clients.length} clients · ${mrr}/mo recurring</div>
+      </div>
+      <div style={{flex:1,overflowY:"auto"}}>
+        {clients.length===0&&<div style={{padding:48,textAlign:"center",color:C.text3,fontSize:13}}>No signed clients yet.</div>}
+        {clients.map(c=>(
+          <button key={c.id} onClick={()=>{setSelLead(c.id);go("lead-detail");}} style={{
+            display:"flex",alignItems:"center",gap:16,width:"100%",padding:"14px 24px",
+            background:"transparent",border:"none",borderBottom:`1px solid ${C.border}`,
+            cursor:"pointer",textAlign:"left",transition:"background .1s",
+          }}
+            onMouseEnter={e=>e.currentTarget.style.background=C.hover}
+            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <div style={{width:36,height:36,borderRadius:8,background:`${C.green}15`,border:`1px solid ${C.green}30`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🏢</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:C.text}}>{c.businessName}</div>
+              <div style={{fontSize:11,color:C.text3,marginTop:2}}>{c.category} · {c.address}</div>
+              {c.demoLink&&<div style={{fontSize:11,color:C.blue,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🔗 {c.demoLink}</div>}
+            </div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+              {c.payment?.amount&&<div style={{fontSize:15,fontWeight:700,color:C.green}}>${c.payment.amount}</div>}
+              {c.payment?.monthly&&<div style={{fontSize:12,color:C.yellow,marginTop:1}}>${c.payment.monthly}/mo</div>}
+              <div style={{marginTop:4}}><span style={{fontSize:10,color:PAY_STATUS[c.payment?.status]||C.text,background:`${PAY_STATUS[c.payment?.status]||C.text}15`,padding:"2px 8px",borderRadius:4,fontWeight:600,textTransform:"capitalize"}}>{c.payment?.status||"unpaid"}</span></div>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 };
@@ -650,86 +879,99 @@ const ClientRoster = ({leads,go,setSelLead}) => {
 const Settings = ({user}) => {
   const [pw,setPw]=useState({current:"",newPw:"",confirm:""});
   const [pwMsg,setPwMsg]=useState({text:"",ok:false});
-  const [zipHistory,setZipHistory]=useState(()=>JSON.parse(localStorage.getItem("ws_zips")||'[]'));
-  const [testPhone,setTestPhone]=useState("");
-  const [testCalling,setTestCalling]=useState(false);
-  const [testMsg,setTestMsg]=useState("");
+  const [zipHistory,setZipHistory]=useState(()=>JSON.parse(localStorage.getItem("ws_zips")||"[]"));
+  const [testPhone,setTestPhone]=useState(""); const [testCalling,setTestCalling]=useState(false); const [testMsg,setTestMsg]=useState("");
+
   const changePw=()=>{
     const stored=getPW();
-    if(stored[user.id]!==pw.current){setPwMsg({text:"Current password is incorrect.",ok:false});return;}
+    if(stored[user.id]!==pw.current){setPwMsg({text:"Current password incorrect.",ok:false});return;}
     if(!pw.newPw){setPwMsg({text:"New password can't be empty.",ok:false});return;}
-    if(pw.newPw!==pw.confirm){setPwMsg({text:"New passwords don't match.",ok:false});return;}
+    if(pw.newPw!==pw.confirm){setPwMsg({text:"Passwords don't match.",ok:false});return;}
     stored[user.id]=pw.newPw; savePW(stored);
     setPwMsg({text:"Password updated.",ok:true}); setPw({current:"",newPw:"",confirm:""});
   };
+
   const fireTestCall=async()=>{
     if(!testPhone.trim()){setTestMsg("Enter a phone number.");return;}
     setTestCalling(true); setTestMsg("");
     try{
-      const res=await fetch("/.netlify/functions/make-call",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:testPhone,businessName:"Test Business",category:"Test",address:"Flowery Branch GA",phone:testPhone})});
-      const data=await res.json();
-      if(data.error)setTestMsg(`Error: ${data.error}`);
-      else setTestMsg(`✓ Test call fired. Call ID: ${data.callId}`);
-    }catch(e){setTestMsg("Failed. Check Bland AI key in Netlify.");}
+      const r=await fetch("/.netlify/functions/make-call",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:testPhone,businessName:"Test Business",category:"Test",address:"Flowery Branch GA"})});
+      const d=await r.json();
+      if(d.error)setTestMsg(`Error: ${d.error}`);
+      else setTestMsg(`✓ Call fired · ID: ${d.callId}`);
+    }catch(e){setTestMsg("Failed.");}
     setTestCalling(false);
   };
-  const clearZips=()=>{localStorage.removeItem("ws_zips");setZipHistory([]);};
+
   const integrations=[
-    {name:"Anthropic API",desc:"AI insights & outreach generation",env:"ANTHROPIC_API_KEY"},
-    {name:"SerpApi",desc:"Lead discovery by zip code",env:"SERPAPI_KEY"},
-    {name:"Bland AI",desc:"AI phone call outreach",env:"BLAND_API_KEY"},
-    {name:"Cloudflare Pages",desc:"Client demo site hosting",env:"CF_API_TOKEN"},
+    {name:"Anthropic API",desc:"AI insights generation",env:"ANTHROPIC_API_KEY"},
+    {name:"SerpApi",desc:"Lead discovery by ZIP",env:"SERPAPI_KEY"},
+    {name:"Bland AI",desc:"AI phone outreach",env:"BLAND_API_KEY"},
+    {name:"Cloudflare Pages",desc:"Client demo hosting",env:"CF_API_TOKEN"},
   ];
+
   return (
-    <div className="fu" style={{display:"flex",flexDirection:"column",gap:14}}>
-      <div style={{paddingTop:4}}><div style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-0.3px"}}>Settings</div><div style={{fontSize:13,color:"rgba(255,255,255,0.38)",marginTop:2}}>Account, team, and integrations.</div></div>
-      <Box label="API Integrations" accent="#6366f1">
-        <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",marginBottom:14,lineHeight:1.6}}>All API keys are configured as environment variables in Netlify. They are never stored in the frontend.</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {integrations.map(i=>(
-            <div key={i.env} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",background:"rgba(255,255,255,0.04)",borderRadius:10,border:"1px solid rgba(255,255,255,0.07)"}}>
-              <div><div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{i.name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:2}}>{i.desc}</div></div>
-              <code style={{fontSize:10,color:"rgba(99,102,241,0.7)",background:"rgba(99,102,241,0.1)",padding:"3px 8px",borderRadius:6,fontFamily:"monospace"}}>{i.env}</code>
-            </div>
-          ))}
+    <div className="anim" style={{padding:24,display:"flex",flexDirection:"column",gap:16,maxWidth:640}}>
+      <div><div style={{fontSize:16,fontWeight:700,color:C.text}}>Settings</div><div style={{fontSize:12,color:C.text3,marginTop:2}}>Account, APIs, and team.</div></div>
+
+      {/* Test Call */}
+      <Card>
+        <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>Test AI Call</div>
+        <div style={{display:"flex",gap:8,marginBottom:testMsg?8:0}}>
+          <input placeholder="Phone number…" value={testPhone} onChange={e=>setTestPhone(e.target.value)} onKeyDown={e=>e.key==="Enter"&&fireTestCall()}/>
+          <Btn onClick={fireTestCall} disabled={testCalling} variant="primary" style={{flexShrink:0,whiteSpace:"nowrap"}}>📞 {testCalling?"Calling…":"Test"}</Btn>
         </div>
-      </Box>
-      <Box label="Test AI Call" accent="#f97316">
-        <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",marginBottom:12}}>Fire a test call to any number to hear how Alex sounds before pointing it at real leads.</div>
-        <div style={{display:"flex",gap:8,marginBottom:10}}>
-          <input placeholder="Phone number e.g. (470) 656-2258" value={testPhone} onChange={e=>setTestPhone(e.target.value)} onKeyDown={e=>e.key==="Enter"&&fireTestCall()}/>
-          <button onClick={fireTestCall} disabled={testCalling} style={{padding:"9px 20px",borderRadius:10,border:"none",background:testCalling?"rgba(249,115,22,0.3)":"linear-gradient(135deg,#f97316,#ea580c)",color:"#fff",fontSize:13,fontWeight:700,whiteSpace:"nowrap"}}>{testCalling?"Calling…":"📞 Test Call"}</button>
-        </div>
-        {testMsg&&<div style={{fontSize:12,color:testMsg.startsWith("Error")||testMsg.startsWith("Failed")?"#f43f5e":"#34d399"}}>{testMsg}</div>}
-      </Box>
-      <Box label={`Change Password — ${user.name}`} accent="#f59e0b">
+        {testMsg&&<div style={{fontSize:12,color:testMsg.startsWith("Error")||testMsg.startsWith("Failed")?C.red:C.green}}>{testMsg}</div>}
+      </Card>
+
+      {/* Change PW */}
+      <Card>
+        <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>Change Password — {user.name}</div>
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:10}}>
           <input type="password" placeholder="Current password" value={pw.current} onChange={e=>setPw({...pw,current:e.target.value})}/>
           <input type="password" placeholder="New password" value={pw.newPw} onChange={e=>setPw({...pw,newPw:e.target.value})}/>
           <input type="password" placeholder="Confirm new password" value={pw.confirm} onChange={e=>setPw({...pw,confirm:e.target.value})}/>
         </div>
-        {pwMsg.text&&<div style={{fontSize:12,color:pwMsg.ok?"#34d399":"#f43f5e",marginBottom:8}}>{pwMsg.text}</div>}
-        <button onClick={changePw} style={{width:"100%",padding:"9px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#fff",fontSize:13,fontWeight:600}}>Update Password</button>
-      </Box>
-      <Box label="Zip Code History">
-        {zipHistory.length===0?<div style={{fontSize:12,color:"rgba(255,255,255,0.25)",fontStyle:"italic"}}>No zips searched yet.</div>:(
-          <>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-              {zipHistory.map(z=><span key={z} style={{padding:"4px 12px",borderRadius:20,background:"rgba(99,102,241,0.15)",border:"1px solid rgba(99,102,241,0.25)",color:"#a5b4fc",fontSize:12,fontWeight:600}}>{z}</span>)}
-            </div>
-            <button onClick={clearZips} style={{padding:"7px 14px",borderRadius:8,border:"1px solid rgba(244,63,94,0.3)",background:"rgba(244,63,94,0.08)",color:"#f43f5e",fontSize:12,fontWeight:600}}>Clear History</button>
-          </>
-        )}
-      </Box>
-      <Box label="Team Accounts">
-        {Object.values(ACCOUNTS).map(a=>(
-          <div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-            <Avatar uid={a.id} size={34}/>
-            <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:"#fff"}}>{a.name}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>{a.role} · @{a.id}</div></div>
-            {a.id===user.id&&<span style={{fontSize:10,color:"#34d399",background:"rgba(16,185,129,0.12)",padding:"3px 10px",borderRadius:10,fontWeight:600}}>You</span>}
+        {pwMsg.text&&<div style={{fontSize:12,color:pwMsg.ok?C.green:C.red,marginBottom:8}}>{pwMsg.text}</div>}
+        <Btn onClick={changePw} variant="primary">Update Password</Btn>
+      </Card>
+
+      {/* API Keys */}
+      <Card>
+        <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>API Integrations</div>
+        <div style={{fontSize:12,color:C.text3,marginBottom:14}}>Keys are set as Netlify environment variables — never stored in the frontend.</div>
+        {integrations.map(i=>(
+          <div key={i.env} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+            <div><div style={{fontSize:13,fontWeight:500,color:C.text}}>{i.name}</div><div style={{fontSize:11,color:C.text3}}>{i.desc}</div></div>
+            <code style={{fontSize:10,color:C.blue,background:C.blueDim,padding:"3px 8px",borderRadius:4}}>{i.env}</code>
           </div>
         ))}
-      </Box>
+      </Card>
+
+      {/* Zip History */}
+      <Card>
+        <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:10}}>ZIP History</div>
+        {zipHistory.length===0?<div style={{fontSize:12,color:C.text3,fontStyle:"italic"}}>No zips searched yet.</div>:(
+          <>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+              {zipHistory.map(z=><span key={z} style={{padding:"3px 10px",borderRadius:4,background:C.blueDim,border:`1px solid ${C.blue}30`,color:C.blue,fontSize:12,fontWeight:500}}>{z}</span>)}
+            </div>
+            <Btn onClick={()=>{localStorage.removeItem("ws_zips");setZipHistory([]);}} variant="danger" style={{fontSize:11}}>Clear History</Btn>
+          </>
+        )}
+      </Card>
+
+      {/* Team */}
+      <Card>
+        <div style={{fontSize:11,fontWeight:600,color:C.text3,letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:12}}>Team</div>
+        {Object.values(ACCOUNTS).map(a=>(
+          <div key={a.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
+            <Av uid={a.id} size={32}/>
+            <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:C.text}}>{a.name}</div><div style={{fontSize:11,color:C.text3}}>{a.role} · @{a.id}</div></div>
+            {a.id===user.id&&<span style={{fontSize:10,color:C.green,background:`${C.green}15`,padding:"2px 8px",borderRadius:4,fontWeight:600}}>You</span>}
+          </div>
+        ))}
+      </Card>
     </div>
   );
 };
@@ -738,34 +980,27 @@ const Settings = ({user}) => {
 export default function App() {
   const [userId,setUserId]=useState(()=>getSession());
   const [view,setView]=useState("dashboard");
-  const [leads,setLeadsRaw]=useState(()=>{
-    try{ const saved=localStorage.getItem("ws_leads"); return saved?JSON.parse(saved):INITIAL_LEADS; }
-    catch{ return INITIAL_LEADS; }
-  });
-  const setLeads=(updater)=>{
-    setLeadsRaw(prev=>{
-      const next=typeof updater==="function"?updater(prev):updater;
-      try{ localStorage.setItem("ws_leads",JSON.stringify(next)); }catch{}
-      return next;
-    });
-  };
+  const [leads,setLeadsRaw]=useState(()=>{try{const s=localStorage.getItem("ws_leads");return s?JSON.parse(s):INITIAL_LEADS;}catch{return INITIAL_LEADS;}});
+  const setLeads=updater=>{setLeadsRaw(prev=>{const next=typeof updater==="function"?updater(prev):updater;try{localStorage.setItem("ws_leads",JSON.stringify(next));}catch{}return next;});};
   const [selLead,setSelLead]=useState(null);
   const [menuOpen,setMenuOpen]=useState(false);
-  const [isMobile,setIsMobile]=useState(window.innerWidth<680);
-  useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<680);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
+  const [isMobile,setIsMobile]=useState(window.innerWidth<700);
+  useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<700);window.addEventListener("resize",fn);return()=>window.removeEventListener("resize",fn);},[]);
   const user=ACCOUNTS[userId];
-  const login=(uid)=>{setSession(uid);setUserId(uid);};
+  const login=uid=>{setSession(uid);setUserId(uid);};
   const logout=()=>{clearSession();setUserId(null);setView("dashboard");setSelLead(null);};
-  const go=(v)=>{setView(v);if(v!=="lead-detail")setSelLead(null);setMenuOpen(false);};
+  const go=v=>{setView(v);if(v!=="lead-detail")setSelLead(null);setMenuOpen(false);};
+
   if(!user) return <Login onLogin={login}/>;
+
   return (
-    <div style={{minHeight:"100vh",background:BG,display:"flex",padding:isMobile?"8px":"12px",gap:12,fontFamily:FF,color:"#fff"}}>
+    <div style={{display:"flex",minHeight:"100vh",background:C.bg,fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
       <style>{CSS}</style>
       <Sidebar view={view} go={go} user={user} leads={leads} onLogout={logout} isMobile={isMobile} menuOpen={menuOpen} setMenuOpen={setMenuOpen}/>
-      <div style={{flex:1,overflowY:"auto",maxHeight:"calc(100vh - 24px)",paddingLeft:isMobile?0:4,paddingTop:isMobile?52:0,paddingBottom:24}}>
-        {view==="dashboard"   &&<Dashboard   leads={leads} user={user} go={go} setSelLead={setSelLead}/>}
-        {view==="leads"       &&<LeadsList   leads={leads} setLeads={setLeads} user={user} go={go} setSelLead={setSelLead} filterMine={false}/>}
-        {view==="mine"        &&<LeadsList   leads={leads} setLeads={setLeads} user={user} go={go} setSelLead={setSelLead} filterMine={true}/>}
+      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflowY:"auto",paddingLeft:isMobile?0:0,paddingTop:isMobile?48:0}}>
+        {view==="dashboard"   &&<Dashboard leads={leads} user={user} go={go} setSelLead={setSelLead}/>}
+        {view==="leads"       &&<LeadsList leads={leads} setLeads={setLeads} user={user} go={go} setSelLead={setSelLead} filterMine={false}/>}
+        {view==="mine"        &&<LeadsList leads={leads} setLeads={setLeads} user={user} go={go} setSelLead={setSelLead} filterMine={true}/>}
         {view==="clients"     &&<ClientRoster leads={leads} go={go} setSelLead={setSelLead}/>}
         {view==="lead-detail" &&selLead&&<LeadDetail leadId={selLead} leads={leads} setLeads={setLeads} user={user} onBack={()=>go("leads")}/>}
         {view==="settings"    &&<Settings user={user}/>}
