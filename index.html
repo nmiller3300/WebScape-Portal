@@ -1,17 +1,548 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex, nofollow" />
-    <title>Webscape | Lead Portal</title>
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { background: #070714; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Village Spirits | Flowery Branch, GA</title>
+  <meta name="description" content="New Village Spirits — Flowery Branch's premier destination for fine wine, top-shelf bourbon, craft beer, spirits and cigars. 5462 McEver Rd.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black:   #1C1610;
+      --dark:    #241E16;
+      --surface: #2E2618;
+      --panel:   #38301F;
+      --gold:    #C9940A;
+      --gold2:   #E8B84B;
+      --cream:   #F5EDD8;
+      --text:    #EDE0C8;
+      --muted:   #B09878;
+      --border:  rgba(201,148,10,0.2);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--black);
+      color: var(--text);
+      font-family: 'Jost', sans-serif;
+      font-weight: 400;
+      overflow-x: hidden;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 56px; height: 72px;
+      background: rgba(8,6,4,0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(201,148,10,0.12);
+    }
+    .nav-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px; font-weight: 600;
+      color: var(--gold2); letter-spacing: 0.04em;
+    }
+    .nav-logo span { display: block; font-size: 10px; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); font-family: 'Jost', sans-serif; }
+    .nav-links { display: flex; gap: 36px; list-style: none; }
+    .nav-links a { font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color .2s; }
+    .nav-links a:hover { color: var(--gold2); }
+    .nav-cta { background: transparent; border: 1px solid var(--gold); color: var(--gold); padding: 9px 22px; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; transition: all .2s; }
+    .nav-cta:hover { background: var(--gold); color: var(--black); }
+
+    /* HERO */
+    #hero {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      position: relative; overflow: hidden;
+      padding: 120px 56px 80px;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background: url('./storefront.jpg') center center / cover no-repeat;
+    }
+    .hero-bg::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(100deg, rgba(18,12,6,0.92) 40%, rgba(18,12,6,0.5) 100%);
+    }
+    .hero-texture {
+      position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23C9940A' fill-opacity='0.025'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    .hero-line {
+      position: absolute; right: 0; top: 0; bottom: 0;
+      width: 1px; background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+      opacity: 0.3;
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 640px; }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 12px;
+      margin-bottom: 32px;
+      font-size: 11px; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold);
+    }
+    .hero-eyebrow::before { content: ''; display: block; width: 40px; height: 1px; background: var(--gold); }
+    h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(56px, 7vw, 88px);
+      font-weight: 600; line-height: 0.95;
+      letter-spacing: -0.01em; color: var(--cream);
+      margin-bottom: 8px;
+    }
+    h1 em { font-style: italic; color: var(--gold2); }
+    .hero-sub {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px; font-style: italic;
+      color: var(--muted); margin-bottom: 28px;
+      letter-spacing: 0.02em;
+    }
+    .hero-desc { font-size: 15px; color: var(--muted); line-height: 1.8; max-width: 480px; margin-bottom: 44px; font-weight: 300; }
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; }
+    .btn-gold { display: inline-block; background: var(--gold); color: var(--black); padding: 14px 36px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; transition: all .2s; }
+    .btn-gold:hover { background: var(--gold2); transform: translateY(-2px); }
+    .btn-ghost { display: inline-block; background: transparent; color: var(--text); padding: 14px 36px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none; border: 1px solid rgba(237,224,200,0.2); transition: all .2s; }
+    .btn-ghost:hover { border-color: var(--text); transform: translateY(-2px); }
+    .hero-categories {
+      display: flex; gap: 28px; margin-top: 64px; padding-top: 48px;
+      border-top: 1px solid var(--border);
+    }
+    .hero-cat { font-size: 11px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
+    .hero-cat span { display: block; font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: var(--cream); letter-spacing: 0; text-transform: none; margin-top: 4px; }
+
+    /* DIVIDER */
+    .gold-divider {
+      height: 1px; background: linear-gradient(to right, transparent, var(--gold), transparent);
+      margin: 0; opacity: 0.4;
+    }
+    .marquee-bar {
+      background: var(--gold); padding: 13px 0; overflow: hidden;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .marquee { display: flex; gap: 56px; white-space: nowrap; animation: marquee 24s linear infinite; }
+    @keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+    .m-item { font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--black); flex-shrink: 0; }
+    .m-dot { color: rgba(8,6,4,0.4); }
+
+    /* SECTIONS */
+    section { padding: 100px 56px; }
+    .eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+    .eyebrow::before { content:''; display:block; width:32px; height:1px; background:var(--gold); }
+    h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(36px,5vw,56px); font-weight: 600; line-height: 1; letter-spacing: -0.01em; color: var(--cream); margin-bottom: 20px; }
+    h2 em { font-style: italic; color: var(--gold2); }
+    .section-desc { font-size: 15px; color: var(--muted); line-height: 1.8; max-width: 520px; font-weight: 300; }
+
+    /* ABOUT */
+    #about { background: var(--dark); }
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; margin-top: 72px; }
+    .about-img-wrap { position: relative; }
+    .about-img-main {
+      width: 100%; aspect-ratio: 4/5; object-fit: cover;
+      filter: brightness(0.85) contrast(1.1);
+    }
+    .about-img-accent {
+      position: absolute; bottom: -32px; right: -32px;
+      width: 55%; aspect-ratio: 1/1; object-fit: cover;
+      filter: brightness(0.85); border: 3px solid var(--black);
+    }
+    .about-badge {
+      position: absolute; top: 32px; left: -20px;
+      background: var(--gold); color: var(--black);
+      padding: 14px 18px; font-family: 'Cormorant Garamond', serif;
+      font-size: 12px; font-weight: 700; text-align: center;
+      box-shadow: 0 8px 24px rgba(201,148,10,0.3); z-index: 2;
+    }
+    .about-badge strong { display: block; font-size: 32px; line-height: 1; }
+    .about-text h2 { margin-bottom: 24px; }
+    .about-text p { font-size: 15px; color: var(--muted); line-height: 1.9; margin-bottom: 20px; font-weight: 300; }
+    .about-pillars { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 32px; }
+    .pillar { background: var(--surface); border: 1px solid var(--border); padding: 20px; }
+    .pillar-icon { font-size: 20px; margin-bottom: 8px; }
+    .pillar-title { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 4px; color: var(--cream); }
+    .pillar-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    /* SELECTION */
+    #selection { background: var(--black); }
+    .selection-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 56px; }
+    .selection-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; }
+    .sel-card {
+      background: var(--surface); padding: 0;
+      position: relative; overflow: hidden;
+      transition: background .25s;
+      display: flex; flex-direction: column;
+    }
+    .sel-card:hover { background: var(--panel); }
+    .sel-card::before {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px; background: var(--gold);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform .3s;
+    }
+    .sel-card:hover::before { transform: scaleX(1); }
+    .sel-img { width: 100%; height: 220px; object-fit: cover; filter: brightness(0.8) contrast(1.05); }
+    .sel-body { padding: 28px 24px; flex: 1; }
+    .sel-number { font-family: 'Cormorant Garamond', serif; font-size: 48px; font-weight: 600; color: rgba(201,148,10,0.15); line-height: 1; margin-bottom: 16px; }
+    .sel-icon { font-size: 32px; margin-bottom: 16px; }
+    .sel-title { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 600; color: var(--cream); margin-bottom: 10px; }
+    .sel-desc { font-size: 13px; color: var(--muted); line-height: 1.7; font-weight: 300; }
+    .sel-items { margin-top: 16px; display: flex; flex-direction: column; gap: 4px; }
+    .sel-item { font-size: 12px; color: rgba(201,148,10,0.7); letter-spacing: 0.04em; }
+    .sel-item::before { content: '— '; }
+
+    /* REVIEWS */
+    #reviews { background: var(--black); }
+    .reviews-intro { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 56px; flex-wrap: wrap; gap: 20px; }
+    .rating-summary { text-align: right; }
+    .rating-big { font-family: 'Cormorant Garamond', serif; font-size: 64px; font-weight: 600; color: var(--gold2); line-height: 1; }
+    .rating-stars { font-size: 20px; color: var(--gold); letter-spacing: 4px; margin: 4px 0; }
+    .rating-count { font-size: 12px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+    .reviews-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2px; }
+    .review-card { background: var(--surface); padding: 32px 28px; position: relative; }
+    .review-card::before { content: '"'; position: absolute; top: 16px; right: 20px; font-family: 'Cormorant Garamond', serif; font-size: 72px; color: rgba(201,148,10,0.1); line-height: 1; }
+    .review-stars { color: var(--gold); font-size: 14px; letter-spacing: 3px; margin-bottom: 14px; }
+    .review-text { font-size: 14px; color: var(--muted); line-height: 1.8; font-style: italic; font-weight: 300; margin-bottom: 20px; }
+    .review-author { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cream); }
+    .review-source { font-size: 11px; color: rgba(201,148,10,0.5); margin-top: 3px; }
+
+    /* FEATURED */
+    #featured { background: var(--surface); }
+    .featured-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2px; margin-top: 56px; }
+    .feat-card {
+      background: var(--panel); padding: 40px 32px;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      min-height: 320px; position: relative; overflow: hidden;
+    }
+    .feat-card.large { min-height: 400px; }
+    .feat-bg { position: absolute; inset: 0; background: linear-gradient(to top, rgba(8,6,4,0.9) 0%, rgba(8,6,4,0.3) 100%); }
+    .feat-tag { font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; position: relative; z-index: 1; }
+    .feat-title { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: var(--cream); position: relative; z-index: 1; margin-bottom: 8px; line-height: 1.1; }
+    .feat-desc { font-size: 12px; color: var(--muted); position: relative; z-index: 1; line-height: 1.6; font-weight: 300; }
+
+    /* HOURS */
+    #hours { background: var(--dark); }
+    .hours-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; margin-top: 64px; align-items: start; }
+    .hours-table { }
+    .hours-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid rgba(201,148,10,0.1); font-size: 14px; }
+    .hours-row .day { color: var(--muted); font-weight: 400; }
+    .hours-row .time { font-weight: 500; color: var(--text); }
+    .hours-row.today .day, .hours-row.today .time { color: var(--gold2); font-weight: 600; }
+    .open-status { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; font-size: 12px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
+    .open-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+    .contact-info { display: flex; flex-direction: column; gap: 20px; }
+    .contact-item { display: flex; gap: 18px; align-items: flex-start; padding: 22px; background: var(--surface); border: 1px solid var(--border); }
+    .contact-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+    .contact-label { font-size: 10px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin-bottom: 5px; }
+    .contact-value { font-size: 15px; font-weight: 500; color: var(--cream); }
+    .contact-value a { color: var(--cream); text-decoration: none; }
+    .contact-value a:hover { color: var(--gold2); }
+    .map-frame { width: 100%; aspect-ratio: 16/9; filter: sepia(40%) contrast(120%) brightness(0.7); border: none; display: block; margin-top: 20px; }
+
+    /* FOOTER */
+    footer { background: #181208; padding: 60px 56px 40px; border-top: 1px solid var(--border); }
+    .footer-inner { display: flex; justify-content: space-between; align-items: flex-start; gap: 40px; flex-wrap: wrap; margin-bottom: 48px; }
+    .footer-brand .logo { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: var(--gold2); margin-bottom: 4px; }
+    .footer-brand .tagline { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+    .footer-brand p { font-size: 13px; color: var(--muted); max-width: 260px; line-height: 1.7; font-weight: 300; }
+    .footer-links h4 { font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+    .footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-links a { font-size: 14px; color: var(--muted); text-decoration: none; transition: color .2s; }
+    .footer-links a:hover { color: var(--cream); }
+    .footer-bottom { padding-top: 28px; border-top: 1px solid rgba(201,148,10,0.1); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .footer-bottom p { font-size: 12px; color: rgba(154,136,112,0.5); }
+    .age-warn { font-size: 11px; color: rgba(201,148,10,0.5); font-weight: 500; }
+
+    /* RESPONSIVE */
+    @media(max-width:900px){
+      nav{padding:0 20px;} .nav-links{display:none;}
+      section{padding:72px 20px;}
+      #hero{padding:100px 20px 60px;}
+      .about-grid,.hours-grid,.selection-grid,.featured-grid{grid-template-columns:1fr;gap:32px;}
+      .selection-grid{grid-template-columns:1fr 1fr;}
+      .hero-categories{flex-wrap:wrap;gap:20px;}
+      .about-img-accent,.about-badge{display:none;}
+      footer{padding:48px 20px 32px;}
+      .footer-inner{flex-direction:column;}
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-logo">New Village Spirits <span>Flowery Branch, Georgia</span></div>
+    <ul class="nav-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="#selection">Selection</a></li>
+      <li><a href="#hours">Visit Us</a></li>
+    </ul>
+    <a href="tel:7709656884" class="nav-cta">Call Us</a>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-texture"></div>
+    <div class="hero-line"></div>
+    <div class="hero-content">
+      <div class="hero-eyebrow">Flowery Branch, Georgia</div>
+      <h1>New Village<br><em>Spirits</em></h1>
+      <p class="hero-sub">Beer · Wine · Spirits · Cigars</p>
+      <p class="hero-desc">Your premier destination for fine wine, top-shelf bourbon, craft beer, and premium cigars. From everyday favorites to rare allocated bottles — curated with care for every occasion.</p>
+      <div class="hero-actions">
+        <a href="#selection" class="btn-gold">Explore Our Selection</a>
+        <a href="#hours" class="btn-ghost">Hours & Location</a>
+      </div>
+      <div class="hero-categories">
+        <div class="hero-cat">Beer<span>Craft & Import</span></div>
+        <div class="hero-cat">Wine<span>Fine & Rare</span></div>
+        <div class="hero-cat">Spirits<span>Bourbon & More</span></div>
+        <div class="hero-cat">Cigars<span>Premium Picks</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARQUEE -->
+  <div class="marquee-bar">
+    <div class="marquee">
+      <span class="m-item">Jack Daniel's</span><span class="m-dot">◆</span>
+      <span class="m-item">Fireball</span><span class="m-dot">◆</span>
+      <span class="m-item">Jägermeister</span><span class="m-dot">◆</span>
+      <span class="m-item">Opus One</span><span class="m-dot">◆</span>
+      <span class="m-item">Caymus</span><span class="m-dot">◆</span>
+      <span class="m-item">Eagle Rare</span><span class="m-dot">◆</span>
+      <span class="m-item">Twisted Tea</span><span class="m-dot">◆</span>
+      <span class="m-item">ArteNOM Tequila</span><span class="m-dot">◆</span>
+      <span class="m-item">Henry McKenna</span><span class="m-dot">◆</span>
+      <span class="m-item">Angry Orchard</span><span class="m-dot">◆</span>
+      <span class="m-item">Jack Daniel's</span><span class="m-dot">◆</span>
+      <span class="m-item">Fireball</span><span class="m-dot">◆</span>
+      <span class="m-item">Jägermeister</span><span class="m-dot">◆</span>
+      <span class="m-item">Opus One</span><span class="m-dot">◆</span>
+      <span class="m-item">Caymus</span><span class="m-dot">◆</span>
+      <span class="m-item">Eagle Rare</span><span class="m-dot">◆</span>
+      <span class="m-item">Twisted Tea</span><span class="m-dot">◆</span>
+      <span class="m-item">ArteNOM Tequila</span><span class="m-dot">◆</span>
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <section id="about">
+    <div class="about-grid">
+      <div class="about-img-wrap">
+        <img class="about-img-main" src="https://images.unsplash.com/photo-1569529465841-dfecdab7503b?w=600&q=80" alt="Spirits selection" loading="lazy">
+        <img class="about-img-accent" src="https://images.unsplash.com/photo-1528823872057-9c018a7a7553?w=400&q=80" alt="Wine bottles" loading="lazy">
+        <div class="about-badge"><strong>20+</strong> Years<br>Serving You</div>
+      </div>
+      <div class="about-text">
+        <div class="eyebrow">Our Story</div>
+        <h2>More Than a<br><em>Liquor Store</em></h2>
+        <p>New Village Spirits has been Flowery Branch's go-to destination for fine wine, top-shelf bourbon, and premium spirits for over two decades. We are a family-owned neighborhood staple that takes pride in offering something for everyone — from the casual beer buyer to the serious collector hunting for a rare allocated bottle.</p>
+        <p>Our knowledgeable staff are passionate about what they do. Whether you need a recommendation for a dinner party or want to explore the world of craft whiskey, we are here to help you find exactly what you're looking for.</p>
+        <div class="about-pillars">
+          <div class="pillar"><div class="pillar-icon">🥃</div><div class="pillar-title">Rare Bourbon</div><div class="pillar-desc">Allocated and hard-to-find bottles alongside everyday favorites</div></div>
+          <div class="pillar"><div class="pillar-icon">🍷</div><div class="pillar-title">Fine Wine</div><div class="pillar-desc">Curated selection including Opus One, Caymus, and more</div></div>
+          <div class="pillar"><div class="pillar-icon">🍺</div><div class="pillar-title">Craft Beer</div><div class="pillar-desc">Wide variety of domestic, import, and craft selections</div></div>
+          <div class="pillar"><div class="pillar-icon">🚬</div><div class="pillar-title">Premium Cigars</div><div class="pillar-desc">Hand-selected premium cigars for every palate</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SELECTION -->
+  <section id="selection">
+    <div class="selection-header">
+      <div>
+        <div class="eyebrow">What We Carry</div>
+        <h2>Our Full<br><em>Selection</em></h2>
+      </div>
+      <p class="section-desc" style="max-width:320px;">From everyday essentials to rare finds — New Village Spirits carries it all under one roof.</p>
+    </div>
+    <div class="selection-grid">
+      <div class="sel-card">
+        <img class="sel-img" src="https://images.unsplash.com/photo-1527281400683-1aae777175f8?w=600&q=80" alt="Spirits and bourbon selection" loading="lazy">
+        <div class="sel-body">
+        <div class="sel-title">Spirits & Bourbon</div>
+        <p class="sel-desc">One of North Georgia's best selections of bourbon, whiskey, tequila, vodka, rum, and gin — including rare allocated bottles you won't find at the big box stores.</p>
+        <div class="sel-items">
+          <div class="sel-item">Eagle Rare & allocated bourbon</div>
+          <div class="sel-item">ArteNOM tequila selection</div>
+          <div class="sel-item">Jack Daniel's full lineup</div>
+          <div class="sel-item">Fireball & Jägermeister</div>
+        </div>
+        </div>
+      </div>
+      <div class="sel-card">
+        <img class="sel-img" src="https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=600&q=80" alt="Fine wine selection" loading="lazy">
+        <div class="sel-body">
+        <div class="sel-title">Fine Wine</div>
+        <p class="sel-desc">A thoughtfully curated wine selection spanning everyday bottles to collector-worthy labels. Red, white, rosé, sparkling, and dessert wines from around the world.</p>
+        <div class="sel-items">
+          <div class="sel-item">Opus One & Caymus</div>
+          <div class="sel-item">Grappa & specialty imports</div>
+          <div class="sel-item">Gluten-free options</div>
+          <div class="sel-item">Gift-ready selections</div>
+        </div>
+        </div>
+      </div>
+      <div class="sel-card">
+        <img class="sel-img" src="https://images.unsplash.com/photo-1608270586620-248524c67de9?w=600&q=80" alt="Craft beer selection" loading="lazy">
+        <div class="sel-body">
+        <div class="sel-title">Beer</div>
+        <p class="sel-desc">A comprehensive beer selection covering domestic staples, imported favorites, and craft varieties. Whether you need a 30-rack or a single specialty can — we have it.</p>
+        <div class="sel-items">
+          <div class="sel-item">Domestic & import selection</div>
+          <div class="sel-item">Craft beer variety</div>
+          <div class="sel-item">Twisted Tea & seltzers</div>
+          <div class="sel-item">Angry Orchard ciders</div>
+        </div>
+        </div>
+      </div>
+      <div class="sel-card">
+        <img class="sel-img" src="https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=600&q=80" alt="Premium cigars" loading="lazy">
+        <div class="sel-body">
+        <div class="sel-title">Cigars</div>
+        <p class="sel-desc">Premium hand-selected cigars for every occasion and palate. Our staff can help you find the perfect smoke to complement your spirit of choice.</p>
+        <div class="sel-items">
+          <div class="sel-item">Premium hand-rolled cigars</div>
+          <div class="sel-item">Variety of sizes & strengths</div>
+          <div class="sel-item">Expert recommendations</div>
+          <div class="sel-item">Great for gifting</div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURED -->
+  <section id="featured" style="padding-top:0;">
+    <div class="eyebrow">Why Locals Choose Us</div>
+    <h2>The New Village<br><em>Difference</em></h2>
+    <div class="featured-grid">
+      <div class="feat-card large" style="background:linear-gradient(135deg,#1A1208,#2A1E0A);">
+        <div class="feat-bg"></div>
+        <div class="feat-tag">Our Specialty</div>
+        <div class="feat-title">Rare & Allocated<br>Bourbon Hunting</div>
+        <div class="feat-desc">We stock hard-to-find bottles that most stores can't get. Eagle Rare, Henry McKenna, and other allocated selections for the serious collector.</div>
+      </div>
+      <div class="feat-card" style="background:linear-gradient(135deg,#0A1018,#0D1825);">
+        <div class="feat-bg"></div>
+        <div class="feat-tag">Staff Knowledge</div>
+        <div class="feat-title">Expert<br>Guidance</div>
+        <div class="feat-desc">Our team knows their products and loves to talk about them. Come in with a question and leave with the perfect bottle.</div>
+      </div>
+      <div class="feat-card" style="background:linear-gradient(135deg,#0F1008,#1A1C0A);">
+        <div class="feat-bg"></div>
+        <div class="feat-tag">Competitive Pricing</div>
+        <div class="feat-title">Great Prices<br>Always</div>
+        <div class="feat-desc">Fair, competitive pricing across our full selection. Quality products without paying a premium just because they're hard to find.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section id="reviews">
+    <div class="reviews-intro">
+      <div>
+        <div class="eyebrow">What People Say</div>
+        <h2>Our Community<br><em>Loves Us</em></h2>
+      </div>
+      <div class="rating-summary">
+        <div class="rating-big">4.8</div>
+        <div class="rating-stars">★★★★★</div>
+        <div class="rating-count">Google Reviews</div>
+      </div>
+    </div>
+    <div class="reviews-grid">
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">Mike and the guys are very helpful. Great selection and good prices. They always know exactly what I'm looking for — and if they don't have it, they'll find it.</p>
+        <div class="review-author">Local Customer</div>
+        <div class="review-source">Google Review</div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">Best bourbon selection in North Georgia. They carry Eagle Rare and allocated bottles I can't find anywhere else. Staff is incredibly knowledgeable about whiskey.</p>
+        <div class="review-author">Bourbon Enthusiast</div>
+        <div class="review-source">Google Review</div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <p class="review-text">Convenient, great prices, and for a small place they have an incredible variety. The wine selection is impressive — found Caymus and Opus One right here in Flowery Branch.</p>
+        <div class="review-author">Wine Lover</div>
+        <div class="review-source">Google Review</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOURS -->
+  <section id="hours">
+    <div class="eyebrow">Come Visit</div>
+    <h2>Hours &<br><em>Location</em></h2>
+    <div class="hours-grid">
+      <div>
+        <div class="hours-table">
+          <div class="hours-row"><span class="day">Monday</span><span class="time">9:00 AM – 10:00 PM</span></div>
+          <div class="hours-row"><span class="day">Tuesday</span><span class="time">9:00 AM – 10:00 PM</span></div>
+          <div class="hours-row"><span class="day">Wednesday</span><span class="time">9:00 AM – 10:00 PM</span></div>
+          <div class="hours-row"><span class="day">Thursday</span><span class="time">9:00 AM – 10:00 PM</span></div>
+          <div class="hours-row today"><span class="day">Friday</span><span class="time">9:00 AM – 11:00 PM</span></div>
+          <div class="hours-row"><span class="day">Saturday</span><span class="time">9:00 AM – 11:00 PM</span></div>
+          <div class="hours-row"><span class="day">Sunday</span><span class="time">12:30 PM – 8:00 PM</span></div>
+        </div>
+        <div class="open-status"><span class="open-dot"></span> Open Today</div>
+      </div>
+      <div class="contact-info">
+        <div class="contact-item">
+          <div class="contact-icon">📍</div>
+          <div><div class="contact-label">Address</div><div class="contact-value"><a href="https://maps.google.com/?q=5462+McEver+Rd+Flowery+Branch+GA" target="_blank">5462 McEver Rd<br>Flowery Branch, GA 30542</a></div></div>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">📞</div>
+          <div><div class="contact-label">Phone</div><div class="contact-value"><a href="tel:7709656884">(770) 965-6884</a></div></div>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">🅿️</div>
+          <div><div class="contact-label">Parking</div><div class="contact-value">Ample free parking available on site</div></div>
+        </div>
+        <iframe class="map-frame"
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1650!2d-83.9221728!3d34.1996939!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x88f5f2b770855bd7%3A0xab4d55410164ee8f!2sNew%20Village%20Spirits!5e0!3m2!1sen!2sus!4v1"
+          allowfullscreen="" loading="lazy" title="New Village Spirits Location">
+        </iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <div class="logo">New Village Spirits</div>
+        <div class="tagline">Beer · Wine · Spirits · Cigars</div>
+        <p>Flowery Branch's premier destination for fine wine, top-shelf bourbon, craft beer, and premium cigars. Family-owned. Community-driven.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Navigate</h4>
+        <ul>
+          <li><a href="#about">About</a></li>
+          <li><a href="#selection">Selection</a></li>
+          <li><a href="#hours">Hours & Location</a></li>
+        </ul>
+      </div>
+      <div class="footer-links">
+        <h4>Contact</h4>
+        <ul>
+          <li><a href="tel:7709656884">(770) 965-6884</a></li>
+          <li><a href="#">5462 McEver Rd<br>Flowery Branch, GA 30542</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 New Village Spirits. All rights reserved.</p>
+      <div class="age-warn">⚠️ Must be 21+ to purchase alcohol.</div>
+    </div>
+  </footer>
+
+</body>
 </html>
